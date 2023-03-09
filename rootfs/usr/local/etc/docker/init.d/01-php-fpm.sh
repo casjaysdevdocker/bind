@@ -34,26 +34,25 @@ SERVICE_EXIT_CODE=0                                                             
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  local etc_dir="/etc/php"
   local conf_dir="/config/php"
+  local etc_dir="${PHP_INI_DIR:-/etc/php}"
   php_bin="$(type -P "${PHP_BIN_DIR:-$(__find_php_bin)}")"
   #
-  [ -e "$conf_dir" ] && [ -n "$php_bin" ] || return 0
+  [ -e "$conf_dir" ] || return 0
   echo "Initializing php in $conf_dir"
-  if [ -n "$PHP_VERSION" ] && [ ! -d "/etc/php" ]; then
-    [ -d "/etc/php" ] && rm -Rf "/etc/php"
-    if [ -d "/etc/php${PHP_VERSION}" ]; then
-      ln -sf "/etc/php${PHP_VERSION}" "/etc/php"
+  if [ -n "$php_bin" ]; then
+    if [ "$etc_dir" != "/etc/php" ]; then
+      [ -d "/etc/php" ] && rm -Rf "/etc/php"
+      ln -sf "$etc_dir" "$etc_dir/php"
     fi
-  fi
-  [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-  [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
-  [ "$etc_dir" = "/etc/php" ] || ln -sf "$etc_dir" "/etc/php"
-  [ -d "/config/php" ] && cp -Rf "/config/php/." "$PHP_INI_DIR"
-  [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "php" "$www_dir/www/index.php"
-  [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "php" "$www_dir/www/index.html"
-  if [ -z "$PHP_BIN_DIR" ]; then
+    [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
+    [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
+    [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
+    [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$conf_dir/"
+    [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.php"
+    [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.html"
+  else
+    echo "php can not be found"
     [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
   fi
   return 0
