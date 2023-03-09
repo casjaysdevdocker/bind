@@ -17,7 +17,7 @@ ARG CONTAINER_VERSION="latest"
 
 ARG SERVICE_PORT="80"
 ARG EXPOSE_PORTS="80 53/tcp 53/udp"
-ARG PHP_VERSION="system"
+ARG PHP_VERSION="php81"
 ARG NODE_VERSION="system"
 ARG NODE_MANAGER="system"
 
@@ -48,7 +48,7 @@ ARG DISTRO_VERSION
 ARG PHP_VERSION
 
 ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini  \
-  bind bind-tools bind-dnssec-root bind-plugins nginx php-fpm"
+  bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}}-fpm"
 
 ENV ENV=~/.bashrc
 ENV SHELL="/bin/sh"

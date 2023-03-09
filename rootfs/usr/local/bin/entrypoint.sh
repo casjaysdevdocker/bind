@@ -45,9 +45,9 @@ done
 SERVICE_USER="root" PHP_INI_DIR="$(__find_php_ini)"
 PHP_BIN_DIR="$(__find_php_bin)"
 # execute command as another user
-SERVICE_UID="0"       # set the user id for creation of user
-SERVICE_PORT=""       # specifiy port which service is listening on
-SERVICES_LIST="tini " # comma seperated list of processes for the healthcheck
+SERVICE_UID="0"                          # set the user id for creation of user
+SERVICE_PORT=""                          # specifiy port which service is listening on
+SERVICES_LIST="tini php-fpm named nginx" # comma seperated list of processes for the healthcheck
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
 HEALTH_ENABLED="${HEALTH_ENABLED:-}"     #
@@ -272,7 +272,7 @@ fi
 # setup the smtp server
 __setup_mta
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-__setup_ssl
+__update_ssl_certs
 __run_pre
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Show message
