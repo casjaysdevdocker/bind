@@ -19,15 +19,15 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                                # change to directory
-ALT_SCRIPT="no"                                           # Set to yes to run the __alt_execute_script
-SERVICE_USER="root"                                       # execute command as another user
-SERVICE_UID="0"                                           # set the user id
-SERVICE_PORT="${PORT:-80}"                                # port which service is listening on
-EXEC_CMD_BIN="nginx"                                      # command to execute
-EXEC_CMD_ARGS="-g 'daemon off;' -c /etc/nginx/nginx.conf" # command arguments
-PRE_EXEC_MESSAGE=""                                       # Show message before execute
-SERVICE_EXIT_CODE=0                                       # default exit code
+WORKDIR=""                               # change to directory
+ALT_SCRIPT="no"                          # Set to yes to run the __alt_execute_script
+SERVICE_USER="root"                      # execute command as another user
+SERVICE_UID="0"                          # set the user id
+SERVICE_PORT="${PORT:-80}"               # port which service is listening on
+EXEC_CMD_BIN="nginx"                     # command to execute
+EXEC_CMD_ARGS="-c /etc/nginx/nginx.conf" # command arguments
+PRE_EXEC_MESSAGE=""                      # Show message before execute
+SERVICE_EXIT_CODE=0                      # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 
