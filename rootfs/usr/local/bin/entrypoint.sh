@@ -41,13 +41,14 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
   [ -f "$set_env" ] && . "$set_env"
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define script variables
-SERVICE_USER="root" PHP_INI_DIR="$(__find_php_ini)"
-PHP_BIN_DIR="$(__find_php_bin)"
-# execute command as another user
+SERVICE_USER="root"                      # execute command as another user
 SERVICE_UID="0"                          # set the user id for creation of user
 SERVICE_PORT=""                          # specifiy port which service is listening on
-SERVICES_LIST="tini php-fpm named nginx" # comma seperated list of processes for the healthcheck
+SERVICES_LIST="tini,php-fpm,named,nginx" # comma seperated list of processes for the healthcheck
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
 HEALTH_ENABLED="${HEALTH_ENABLED:-}"     #
@@ -68,11 +69,7 @@ PGSQL_CONFIG_FILE="$(__find_pgsql_conf)"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Last thing to run before options
 __run_pre() {
-  [ -d "/data/named/zones" ] || mkdir -p "/data/named/zones"
-  [ -f "/config/named.conf" ] || cp -Rf "/etc/named.conf" "/config/named.conf"
-  __init_nginx
-  __init_php
-  # end
+
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -83,13 +80,10 @@ __run_message() {
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Custom functions
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # export variables
-export ENV_PORTS="${ENV_PORTS//\/*/}"
-export PHP_INI_DIR PHP_BIN_DIR HTTPD_CONFIG_FILE
-export NGINX_CONFIG_FILE MYSQL_CONFIG_FILE PGSQL_CONFIG_FILE
+ENV_PORTS="${ENV_PORTS//\/*/}"
+ENV_PORTS="$(echo "$ENV_PORTS" | tr ' ' '\n' | sort -u)"
+export NGINX_CONFIG_FILE MYSQL_CONFIG_FILE PGSQL_CONFIG_FILE ENV_PORTS PHP_INI_DIR PHP_BIN_DIR HTTPD_CONFIG_FILE
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default directories
 export BACKUP_DIR="${BACKUP_DIR:-/data/backups}"

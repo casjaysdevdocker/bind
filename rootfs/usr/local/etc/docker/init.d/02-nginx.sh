@@ -18,6 +18,9 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
   [ -f "$set_env" ] && . "$set_env"
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
 WORKDIR=""                               # change to directory
 ALT_SCRIPT="no"                          # Set to yes to run the __alt_execute_script
@@ -30,23 +33,21 @@ PRE_EXEC_MESSAGE=""                      # Show message before execute
 SERVICE_EXIT_CODE=0                      # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
-
+etc_dir="/etc/nginx"
+conf_dir="/config/nginx"
+www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  local etc_dir="/etc/nginx"
-  local conf_dir="/config/nginx"
-  local www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
-  #
   nginx_bin="$(type -P 'nginx')"
-  [ -e "$conf_dir" ] && [ -n "$nginx_bin" ] || return 0
+  [ -n "$nginx_bin" ] || return 1
   echo "Initializing nginx web server in $conf_dir"
   [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
   [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
   if [ "$SSL_ENABLED" = "true" ]; then
-    __file_copy "$conf_dir/nginx.ssl.conf" "$etc_dir/nginx.ssl.conf"
+    __file_copy "$conf_dir/nginx.ssl.conf" "$etc_dir/nginx.conf"
   else
-    [ -n "$ssl_conf" ] && [ -f "$ssl_conf" ] && rm -Rf "$etc_dir/nginx.ssl.conf"
+    [ -f "$etc_dir/nginx.ssl.conf" ] && rm -Rf "$etc_dir/nginx.ssl.conf"
   fi
   __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
   __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/nginx.conf"
@@ -71,11 +72,8 @@ __pre_execute() {
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Custom functions
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # alternate script to start server
-__alt_execute_script() { true; }
+__alt_execute_script() { eval $EXEC_CMD_BIN $EXEC_CMD_ARGS; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # process check functions
 __pcheck() { [ -n "$(type -P pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null && return 0 || return 10; }
