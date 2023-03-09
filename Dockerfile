@@ -95,7 +95,8 @@ RUN set -ex ; \
 
 RUN echo 'Running cleanup' ; \
   rm -Rf "/etc/named"* "/etc/rndc"* "/var/named"/* ; \
-  mv -f "/tmp/named.conf" "/etc/named.conf" ; \
+  mv -f "/tmp/etc/named.conf" "/etc/named.conf" ; \
+  mv -f "/tmp/etc/named" "/etc/named" ;\
   mkdir -p "/var/named/zones"
 
 RUN rm -Rf "/config" "/data" ; \

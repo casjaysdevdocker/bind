@@ -19,31 +19,36 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""          # change to directory
-ALT_SCRIPT="yes"    # Set to yes to run the __alt_execute_script
-SERVICE_USER="root" # execute command as another user
-SERVICE_UID=""      # set the user id
-SERVICE_PORT=""     # port which service is listening on
-EXEC_CMD_BIN="bind" # command to execute
-EXEC_CMD_ARGS=" "   # command arguments
-PRE_EXEC_MESSAGE="" # Show message before execute
-SERVICE_EXIT_CODE=0 # default exit code
+WORKDIR=""                         # change to directory
+ALT_SCRIPT="yes"                   # Set to yes to run the __alt_execute_script
+SERVICE_USER="root"                # execute command as another user
+SERVICE_UID=""                     # set the user id
+SERVICE_PORT=""                    # port which service is listening on
+EXEC_CMD_BIN="named"               # command to execute
+EXEC_CMD_ARGS="-c /etc/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                # Show message before execute
+SERVICE_EXIT_CODE=0                # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
+  KEY_RNDC="${KEY_RNDC:-$(__tsig_key)}"
+  KEY_DHCP="${KEY_DHCP:-$(__tsig_key)}"
+  KEY_BACKUP="${KEY_BACKUP:-$(__tsig_key)}"
+  KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
   sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'${KEY_RNDC:-$(__tsig_key)}'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_DHCP|'${KEY_DHCP:-$(__tsig_key)}'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_BACKUP|'${KEY_BACKUP:-$(__tsig_key)}'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'${KEY_CERTBOT:-$(__tsig_key)}'|g' "/etc/named.conf" &>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "/etc/named.conf" &>/dev/null
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "/etc/named.conf" &>/dev/null
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "/etc/named.conf" &>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "/etc/named.conf" &>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' /etc/named/certbot-update.conf &>/dev/null
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to setup ssl support
-__update_ssl() {
+__update_ssl_conf() {
 
   return 0
 }
@@ -54,6 +59,7 @@ __pre_execute() {
     file_name="$(basename "$dns_file")"
     [ -d "/var/named/zones" ] || mkdir -p "/var/named/zones"
     [ -f "$dns_file" ] && cp -Rf "$dns_file" "/var/named/zones/$file_name"
+    __create_zone
   done
   return 0
 }
@@ -61,7 +67,7 @@ __pre_execute() {
 # Custom functions
 __tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret ||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 __create_zone() {
-  cat <<EOF | tee
+  cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
 @                               1D IN SOA   $HOSTNAME. root.$HOSTNAME. (
                                     42    ; serial (yyyymmdd##)
                                     3H    ; refresh
