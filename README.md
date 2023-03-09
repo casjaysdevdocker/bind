@@ -31,6 +31,6 @@ buildx
 
 ## Authors  
 
-🤖 : [Github](https://github.com/) [Docker](https://hub.docker.com/r/) 🤖  
-📽 dockermgr: [Github](https://github.com/dockermgr) [Docker](https://hub.docker.com/r/dockermgr) 📽  
-⛵ CasjaysDev Docker: [Github](https://github.com/casjaysdevdocker) [Docker](https://hub.docker.com/r/casjaysdevdocker) ⛵  
+📽 dockermgr: [Github](https://github.com/dockermgr) 📽  
+🤖 casjay: [Github](https://github.com/casjay) [Docker](https://hub.docker.com/r/casjay) 🤖  
+⛵ CasjaysDevDocker: [Github](https://github.com/casjaysdevdocker) [Docker](https://hub.docker.com/r/casjaysdevdocker) ⛵  

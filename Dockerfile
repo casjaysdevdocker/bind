@@ -1,126 +1,177 @@
-# Docker image for bind using alpine template
+# Docker image for bind using the alpine template
 ARG LICENSE="MIT"
 ARG IMAGE_NAME="bind"
 ARG PHP_SERVER="bind"
+ARG BUILD_DATE="Wed Mar  8 09:27:13 PM EST 2023"
+ARG LANGUAGE="en_US.UTF-8"
 ARG TIMEZONE="America/New_York"
-ARG BUILD_DATE="Tue Jan  3 14:36:16 EST 2023"
+ARG WWW_ROOT_DIR="/data/htdocs"
+ARG DEFAULT_FILE_DIR="/usr/local/share/template-files"
 ARG DEFAULT_DATA_DIR="/usr/local/share/template-files/data"
 ARG DEFAULT_CONF_DIR="/usr/local/share/template-files/config"
 ARG DEFAULT_TEMPLATE_DIR="/usr/local/share/template-files/defaults"
 
-ARG SERVICE_PORT=""
-ARG EXPOSE_PORTS=""
+ARG IMAGE_REPO="alpine"
+ARG IMAGE_VERSION="edge"
+ARG CONTAINER_VERSION="latest"
+
+ARG SERVICE_PORT="80"
+ARG EXPOSE_PORTS="80 53/tcp 53/udp"
+ARG PHP_VERSION="system"
 ARG NODE_VERSION="system"
 ARG NODE_MANAGER="system"
-ARG BUILD_VERSION="latest"
 
-FROM casjaysdevdocker/alpine:latest AS build
+ARG USER="root"
+ARG DISTRO_VERSION="${IMAGE_VERSION}"
+ARG BUILD_VERSION="${DISTRO_VERSION}"
 
-ARG ALPINE_VERSION=v3.16
+FROM tianon/gosu:latest AS gosu
+FROM ${IMAGE_REPO}:${IMAGE_VERSION} AS build
+ARG USER
+ARG LICENSE
+ARG TIMEZONE
+ARG LANGUAGE
+ARG IMAGE_NAME
+ARG PHP_SERVER
+ARG BUILD_DATE
+ARG SERVICE_PORT
+ARG EXPOSE_PORTS
+ARG NODE_VERSION
+ARG NODE_MANAGER
+ARG BUILD_VERSION
+ARG WWW_ROOT_DIR
+ARG DEFAULT_FILE_DIR
+ARG DEFAULT_DATA_DIR
+ARG DEFAULT_CONF_DIR
+ARG DEFAULT_TEMPLATE_DIR
+ARG DISTRO_VERSION
+ARG PHP_VERSION
 
-ARG LICENSE \
-  TIMEZONE \
-  IMAGE_NAME \
-  PHP_SERVER \
-  BUILD_DATE \
-  SERVICE_PORT \
-  EXPOSE_PORTS \
-  NODE_VERSION \
-  NODE_MANAGER \
-  BUILD_VERSION \
-  DEFAULT_DATA_DIR \
-  DEFAULT_CONF_DIR \
-  DEFAULT_TEMPLATE_DIR
+ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini  \
+  bind bind-tools bind-dnssec-root bind-plugins nginx php-fpm"
 
-ARG PACK_LIST="bash bind"
-
-ENV LANG=en_US.UTF-8
-ENV ENV=ENV=~/.bashrc
-ENV TZ="America/New_York"
+ENV ENV=~/.bashrc
 ENV SHELL="/bin/sh"
+ENV TZ="${TIMEZONE}"
+ENV TIMEZONE="${TZ}"
+ENV container="docker"
+ENV LANG="${LANGUAGE}"
 ENV TERM="xterm-256color"
-ENV TIMEZONE="${TZ:-$TIMEZONE}"
 ENV HOSTNAME="casjaysdev-bind"
 
+USER ${USER}
+WORKDIR /root
+
+COPY --from=gosu /usr/local/bin/gosu /usr/local/bin/gosu
 COPY ./rootfs/. /
 
 RUN set -ex; \
   rm -Rf "/etc/apk/repositories"; \
+  [ "$DISTRO_VERSION" = "latest" ] && DISTRO_VERSION="edge"; \
+  [ "$DISTRO_VERSION" = "edge" ] || DISTRO_VERSION="v${DISTRO_VERSION}" ; \
   mkdir -p "${DEFAULT_DATA_DIR}" "${DEFAULT_CONF_DIR}" "${DEFAULT_TEMPLATE_DIR}"; \
-  echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main" >>"/etc/apk/repositories"; \
-  echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/community" >>"/etc/apk/repositories"; \
-  if [ "${ALPINE_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/testing" >>"/etc/apk/repositories" ; fi ; \
+  echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/main" >>"/etc/apk/repositories"; \
+  echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/community" >>"/etc/apk/repositories"; \
+  if [ "${DISTRO_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/testing" >>"/etc/apk/repositories" ; fi ; \
   apk update --update-cache && apk add --no-cache ${PACK_LIST}
 
-RUN echo
+RUN echo "$TIMEZONE" >"/etc/timezone" ; \
+  echo 'hosts: files dns' >"/etc/nsswitch.conf" ; \
+  [ -f "/usr/share/zoneinfo/${TZ}" ] && ln -sf "/usr/share/zoneinfo/${TZ}" "/etc/localtime" ; \
+  PHP_FPM="$(ls /usr/*bin/php*fpm* 2>/dev/null)" ; \
+  [ -n "$PHP_FPM" ] && [ -z "$(type -P php-fpm)" ] && ln -sf "$PHP_FPM" "/usr/bin/php-fpm" ; \
+  if [ -f "/etc/profile.d/color_prompt.sh.disabled" ]; then mv -f "/etc/profile.d/color_prompt.sh.disabled" "/etc/profile.d/color_prompt.sh"; fi
+
+RUN touch "/etc/profile" "/root/.profile" ; \
+  [ -f "/etc/bash/bashrc" ] && cp -Rf "/etc/bash/bashrc" "/root/.bashrc" || [ -f "/etc/bashrc" ] && cp -Rf "/etc/bashrc" "/root/.bashrc" ; \
+  sed -i 's|root:x:.*|root:x:0:0:root:/root:/bin/bash|g' "/etc/passwd" ; \
+  grep -s -q 'alias quit' "/root/.bashrc" || printf '# Profile\n\n%s\n%s\n%s\n' '. /etc/profile' '. /root/.profile' "alias quit='exit 0 2>/dev/null'" >>"/root/.bashrc" ; \
+  [ -f "/usr/local/etc/docker/env/default.sample" ] && [ -d "/etc/profile.d" ] && \
+  cp -Rf "/usr/local/etc/docker/env/default.sample" "/etc/profile.d/container.env.sh" && chmod 755 "/etc/profile.d/container.env.sh" ; \
+  BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh"
+
+RUN set -ex ; \
+  echo
 
 RUN echo 'Running cleanup' ; \
-  rm -Rf /usr/share/doc/* /usr/share/info/* /tmp/* /var/tmp/* ; \
-  rm -Rf /usr/local/bin/.gitkeep /usr/local/bin/.gitkeep /config /data /var/cache/apk/* ; \
-  rm -rf /lib/systemd/system/multi-user.target.wants/* ; \
+  rm -Rf "/etc/named"* "/etc/rndc"* "/var/named"/* ; \
+  mv -f "/tmp/named.conf" "/etc/named.conf" ; \
+  mkdir -p "/var/named/zones"
+
+RUN rm -Rf "/config" "/data" ; \
   rm -rf /etc/systemd/system/*.wants/* ; \
+  rm -rf /lib/systemd/system/systemd-update-utmp* ; \
+  rm -rf /lib/systemd/system/anaconda.target.wants/*; \
   rm -rf /lib/systemd/system/local-fs.target.wants/* ; \
+  rm -rf /lib/systemd/system/multi-user.target.wants/* ; \
   rm -rf /lib/systemd/system/sockets.target.wants/*udev* ; \
   rm -rf /lib/systemd/system/sockets.target.wants/*initctl* ; \
-  rm -rf /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* ; \
-  rm -rf /lib/systemd/system/systemd-update-utmp* ; \
-  if [ -d "/lib/systemd/system/sysinit.target.wants" ]; then cd "/lib/systemd/system/sysinit.target.wants" && rm $(ls | grep -v systemd-tmpfiles-setup) ; fi
+  rm -Rf /usr/share/doc/* /usr/share/info/* /tmp/* /var/tmp/* /var/cache/*/* ; \
+  if [ -d "/lib/systemd/system/sysinit.target.wants" ]; then cd "/lib/systemd/system/sysinit.target.wants" && rm -f $(ls | grep -v systemd-tmpfiles-setup) ; fi
+
+RUN echo "Init done"
 
 FROM scratch
+ARG USER
+ARG LICENSE
+ARG LANGUAGE
+ARG TIMEZONE
+ARG IMAGE_NAME
+ARG PHP_SERVER
+ARG BUILD_DATE
+ARG SERVICE_PORT
+ARG EXPOSE_PORTS
+ARG NODE_VERSION
+ARG NODE_MANAGER
+ARG BUILD_VERSION
+ARG DEFAULT_DATA_DIR
+ARG DEFAULT_CONF_DIR
+ARG DEFAULT_TEMPLATE_DIR
+ARG DISTRO_VERSION
+ARG PHP_VERSION
 
-ARG LICENSE \
-  TIMEZONE \
-  IMAGE_NAME \
-  PHP_SERVER \
-  BUILD_DATE \
-  SERVICE_PORT \
-  EXPOSE_PORTS \
-  NODE_VERSION \
-  NODE_MANAGER \
-  BUILD_VERSION \
-  DEFAULT_DATA_DIR \
-  DEFAULT_CONF_DIR \
-  DEFAULT_TEMPLATE_DIR
+USER ${USER}
+WORKDIR /root
 
-LABEL maintainer="CasjaysDev <docker-admin@casjaysdev.com>" \
-  org.opencontainers.image.vendor="CasjaysDev" \
-  org.opencontainers.image.authors="CasjaysDev" \
-  org.opencontainers.image.vcs-type="Git" \
-  org.opencontainers.image.name="${IMAGE_NAME}" \
-  org.opencontainers.image.base.name="${IMAGE_NAME}" \
-  org.opencontainers.image.license="${LICENSE}" \
-  org.opencontainers.image.vcs-ref="${BUILD_VERSION}" \
-  org.opencontainers.image.build-date="${BUILD_DATE}" \
-  org.opencontainers.image.version="${BUILD_VERSION}" \
-  org.opencontainers.image.schema-version="${BUILD_VERSION}" \
-  org.opencontainers.image.url="https://hub.docker.com/r/casjaysdevdocker/${IMAGE_NAME}" \
-  org.opencontainers.image.vcs-url="https://github.com/casjaysdevdocker/${IMAGE_NAME}" \
-  org.opencontainers.image.url.source="https://github.com/casjaysdevdocker/${IMAGE_NAME}" \
-  org.opencontainers.image.documentation="https://hub.docker.com/r/casjaysdevdocker/${IMAGE_NAME}" \
-  org.opencontainers.image.description="Containerized version of ${IMAGE_NAME}" \
-  com.github.containers.toolbox="false"
+LABEL maintainer="CasjaysDev <docker-admin@casjaysdev.com>"
+LABEL org.opencontainers.image.vendor="CasjaysDev"
+LABEL org.opencontainers.image.authors="CasjaysDev"
+LABEL org.opencontainers.image.vcs-type="Git"
+LABEL org.opencontainers.image.name="${IMAGE_NAME}"
+LABEL org.opencontainers.image.base.name="${IMAGE_NAME}"
+LABEL org.opencontainers.image.license="${LICENSE}"
+LABEL org.opencontainers.image.vcs-ref="${BUILD_VERSION}"
+LABEL org.opencontainers.image.build-date="${BUILD_DATE}"
+LABEL org.opencontainers.image.version="${BUILD_VERSION}"
+LABEL org.opencontainers.image.schema-version="${BUILD_VERSION}"
+LABEL org.opencontainers.image.url="https://hub.docker.com/r/casjaysdevdocker/${IMAGE_NAME}"
+LABEL org.opencontainers.image.vcs-url="https://github.com/casjaysdevdocker/${IMAGE_NAME}"
+LABEL org.opencontainers.image.url.source="https://github.com/casjaysdevdocker/${IMAGE_NAME}"
+LABEL org.opencontainers.image.documentation="https://hub.docker.com/r/casjaysdevdocker/${IMAGE_NAME}"
+LABEL org.opencontainers.image.description="Containerized version of ${IMAGE_NAME}"
+LABEL com.github.containers.toolbox="false"
 
-ENV LANG=en_US.UTF-8 \
-  ENV=~/.bashrc \
-  SHELL="/bin/bash" \
-  PORT="${SERVICE_PORT}" \
-  TERM="xterm-256color" \
-  PHP_SERVER="${PHP_SERVER}" \
-  CONTAINER_NAME="${IMAGE_NAME}" \
-  TZ="${TZ:-America/New_York}" \
-  TIMEZONE="${TZ:-$TIMEZONE}" \
-  HOSTNAME="casjaysdev-${IMAGE_NAME}"
+ENV ENV=~/.bashrc
+ENV SHELL="/bin/bash"
+ENV TZ="${TIMEZONE}"
+ENV TIMEZONE="${TZ}"
+ENV container="docker"
+ENV LANG="${LANGUAGE}"
+ENV TERM="xterm-256color"
+ENV PORT="${SERVICE_PORT}"
+ENV ENV_PORTS="${EXPOSE_PORTS}"
+ENV PHP_SERVER="${PHP_SERVER}"
+ENV PHP_VERSION="${PHP_VERSION}"
+ENV CONTAINER_NAME="${IMAGE_NAME}"
+ENV HOSTNAME="casjaysdev-${IMAGE_NAME}"
+ENV USER="${USER}"
 
 COPY --from=build /. /
 
-USER root
-WORKDIR /root
-
 VOLUME [ "/config","/data" ]
 
-EXPOSE $EXPOSE_PORTS
+EXPOSE ${ENV_PORTS}
 
 #CMD [ "" ]
 ENTRYPOINT [ "tini", "-p", "SIGTERM", "--", "/usr/local/bin/entrypoint.sh" ]
 HEALTHCHECK --start-period=1m --interval=2m --timeout=3s CMD [ "/usr/local/bin/entrypoint.sh", "healthcheck" ]
-
