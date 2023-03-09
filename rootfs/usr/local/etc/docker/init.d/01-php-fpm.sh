@@ -18,6 +18,9 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
   [ -f "$set_env" ] && . "$set_env"
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
 WORKDIR=""                                                                              # change to directory
 ALT_SCRIPT="no"                                                                         # Set to yes to run the __alt_execute_script
@@ -30,25 +33,21 @@ PRE_EXEC_MESSAGE=""                                                             
 SERVICE_EXIT_CODE=0                                                                     # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
-
+conf_dir="/config/php"
+etc_dir="${PHP_INI_DIR:-$(__find_php_ini)}"
+php_bin="${PHP_BIN_DIR:-$(__find_php_bin)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  local conf_dir="/config/php"
-  local etc_dir="${PHP_INI_DIR:-/etc/php}"
-  php_bin="$(type -P "${PHP_BIN_DIR:-$(__find_php_bin)}")"
-  #
-  [ -e "$conf_dir" ] || return 0
   echo "Initializing php in $conf_dir"
-  if [ -n "$php_bin" ]; then
+  if [ -n "$php_bin" ] && [ -d "$etc_dir" ]; then
     if [ "$etc_dir" != "/etc/php" ]; then
       [ -d "/etc/php" ] && rm -Rf "/etc/php"
-      ln -sf "$etc_dir" "$etc_dir/php"
+      ln -sf "$etc_dir" "/etc/php"
     fi
     [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
     [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
     [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-    [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$conf_dir/"
     [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.php"
     [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.html"
   else
@@ -69,9 +68,6 @@ __pre_execute() {
 
   return 0
 }
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Custom functions
-
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # alternate script to start server
 __alt_execute_script() { true; }

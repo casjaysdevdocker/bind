@@ -97,7 +97,7 @@ RUN echo 'Running cleanup' ; \
   rm -Rf "/etc/rndc"* "/etc/named"* "/etc/bind/"* "/var/bind"/* ; \
   [ -d "/etc/bind" ] && mv -f "/etc/bind" "/etc/named" ; \
   [ -d "/var/bind" ] && mv -f "/var/bind" "/var/named" ; \
-  [ -d "/tmp/etc/bind" ] && cp -Rf "/tmp/etc/named/." "/etc/bind/" ;\
+  [ -d "/tmp/etc/bind" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" ;\
   [ -d "/tmp/var/bind" ] && cp -Rf "/tmp/var/named/." "/var/named/" ; \
   mkdir -p "/var/named/zones" "/etc/named/keys" "/var/log/named" ; \
   touch "/var/log/named/debug.log" ; \

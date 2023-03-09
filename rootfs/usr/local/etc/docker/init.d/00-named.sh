@@ -18,16 +18,20 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
   [ -f "$set_env" ] && . "$set_env"
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Custom functions
+__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
+__rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                       # change to directory
-ALT_SCRIPT="yes"                                 # Set to yes to run the __alt_execute_script
-SERVICE_USER="root"                              # execute command as another user
-SERVICE_UID=""                                   # set the user id
-SERVICE_PORT=""                                  # port which service is listening on
-EXEC_CMD_BIN="named"                             # command to execute
-EXEC_CMD_ARGS="-u named -c /etc/bind/named.conf" # command arguments
-PRE_EXEC_MESSAGE=""                              # Show message before execute
-SERVICE_EXIT_CODE=0                              # default exit code
+WORKDIR=""                                  # change to directory
+ALT_SCRIPT="yes"                            # Set to yes to run the __alt_execute_script
+SERVICE_USER="root"                         # execute command as another user
+SERVICE_UID=""                              # set the user id
+SERVICE_PORT=""                             # port which service is listening on
+EXEC_CMD_BIN="named"                        # command to execute
+EXEC_CMD_ARGS="-g -c /etc/named/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                         # Show message before execute
+SERVICE_EXIT_CODE=0                         # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 etc_dir="/etc/named"
@@ -41,11 +45,12 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/*.conf
-  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/*.conf
-  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/*.conf
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/*.conf
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/*.{conf,key}
+  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
   mkdir -p "/config/named" "/data/named/zones" "/tmp/named" "/run/named"
   return 0
@@ -59,23 +64,21 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
+  __create_zone
   for dns_file in /data/named/*; do
     file_name="$(basename "$dns_file")"
-    [ -d "$var_dir/zones" ] || mkdir -p "$var_dir/zones"
     [ -f "$dns_file" ] && cp -Rf "$dns_file" "$var_dir/zones/$file_name"
-    __create_zone
   done
   if grep -s -q "named" "/etc/passwd"; then
     chown -Rf named:named /etc/bind* $var_dir /run/named /tmp/named
   fi
+  [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Custom functions
-__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
-__rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return; }
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __create_zone() {
+  [ -f "/var/named/zones/$HOSTNAME.zone" ] && return
+  [ -d "$var_dir/zones" ] || mkdir -p "$var_dir/zones"
   cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
 @                               1D IN SOA   $HOSTNAME. root.$HOSTNAME. (
                                     42    ; serial (yyyymmdd##)
@@ -95,7 +98,6 @@ EOF
 __alt_execute_script() {
   named-checkconf -z /etc/named.conf || { echo "Config check failed" && exit 1; }
   eval $EXEC_CMD_BIN $EXEC_CMD_ARGS
-  tail -f /tmp/named/*
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # process check functions
