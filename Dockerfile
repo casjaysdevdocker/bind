@@ -94,10 +94,15 @@ RUN set -ex ; \
   echo
 
 RUN echo 'Running cleanup' ; \
-  rm -Rf "/etc/named"* "/etc/rndc"* "/var/named"/* ; \
-  mv -f "/tmp/etc/named.conf" "/etc/named.conf" ; \
-  mv -f "/tmp/etc/named" "/etc/named" ;\
-  mkdir -p "/var/named/zones"
+  rm -Rf "/etc/rndc"* "/etc/named"* "/etc/bind/"* "/var/bind"/* ; \
+  [ -d "/etc/bind" ] && mv -f "/etc/bind" "/etc/named" ; \
+  [ -d "/var/bind" ] && mv -f "/var/bind" "/var/named" ; \
+  [ -d "/tmp/etc/bind" ] && cp -Rf "/tmp/etc/named/." "/etc/bind/" ;\
+  [ -d "/tmp/var/bind" ] && cp -Rf "/tmp/var/named/." "/var/named/" ; \
+  mkdir -p "/var/named/zones" "/etc/named/keys" "/var/log/named" ; \
+  touch "/var/log/named/debug.log" ; \
+  for f in /tmp/named/{default,security,xfer-in,xfer-out,update,notify,query}.log; do ln -sf /dev/stdout "$f";done ; \
+  chown -Rf named:named /etc/named /var/named /var/log/named
 
 RUN rm -Rf "/config" "/data" ; \
   rm -rf /etc/systemd/system/*.wants/* ; \

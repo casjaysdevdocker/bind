@@ -19,34 +19,35 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                  # change to directory
-ALT_SCRIPT="yes"                            # Set to yes to run the __alt_execute_script
-SERVICE_USER="root"                         # execute command as another user
-SERVICE_UID=""                              # set the user id
-SERVICE_PORT=""                             # port which service is listening on
-EXEC_CMD_BIN="named"                        # command to execute
-EXEC_CMD_ARGS="-u named -c /etc/named.conf" # command arguments
-PRE_EXEC_MESSAGE=""                         # Show message before execute
-SERVICE_EXIT_CODE=0                         # default exit code
+WORKDIR=""                                       # change to directory
+ALT_SCRIPT="yes"                                 # Set to yes to run the __alt_execute_script
+SERVICE_USER="root"                              # execute command as another user
+SERVICE_UID=""                                   # set the user id
+SERVICE_PORT=""                                  # port which service is listening on
+EXEC_CMD_BIN="named"                             # command to execute
+EXEC_CMD_ARGS="-u named -c /etc/bind/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                              # Show message before execute
+SERVICE_EXIT_CODE=0                              # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
-
+etc_dir="/etc/named"
+var_dir="/var/named"
+conf_dir="/config/named"
+data_dir="/data/named"
+KEY_RNDC="${KEY_RNDC:-$(__tsig_key)}"
+KEY_DHCP="${KEY_DHCP:-$(__tsig_key)}"
+KEY_BACKUP="${KEY_BACKUP:-$(__tsig_key)}"
+KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  KEY_DHCP="${KEY_DHCP:-$(__tsig_key)}"
-  KEY_BACKUP="${KEY_BACKUP:-$(__tsig_key)}"
-  KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
-  KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key)}"
-  __rndc_conf "${KEY_RNDC:-}"
-  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "/etc/named.conf" &>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' /etc/named/certbot-update.conf &>/dev/null
-  mkdir -p "/tmp/named" "/data/named" "/run/named"
-  touch /tmp/named/{default,security,xfer-in,xfer-out,update,notify,query,debug}.log
+  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/*.conf
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/*.conf
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/*.conf
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/*.conf
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/*.{conf,key}
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
+  mkdir -p "/config/named" "/data/named/zones" "/tmp/named" "/run/named"
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -60,23 +61,19 @@ __update_ssl_conf() {
 __pre_execute() {
   for dns_file in /data/named/*; do
     file_name="$(basename "$dns_file")"
-    [ -d "/var/named/zones" ] || mkdir -p "/var/named/zones"
-    [ -f "$dns_file" ] && cp -Rf "$dns_file" "/var/named/zones/$file_name"
+    [ -d "$var_dir/zones" ] || mkdir -p "$var_dir/zones"
+    [ -f "$dns_file" ] && cp -Rf "$dns_file" "$var_dir/zones/$file_name"
     __create_zone
   done
-  grep -s -q "named" "/etc/passwd" && chown -Rf named:named /etc/rndc.* /etc/named* /var/named* /run/named /tmp/named
+  if grep -s -q "named" "/etc/passwd"; then
+    chown -Rf named:named /etc/bind* $var_dir /run/named /tmp/named
+  fi
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
 __tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 __rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return; }
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-__rndc_conf() {
-  cat <<EOF >"/etc/rndc.key"
-key "rndc-key" { algorithm hmac-sha256; secret "$1"; };
-EOF
-}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __create_zone() {
   cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
