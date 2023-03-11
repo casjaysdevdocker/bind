@@ -101,11 +101,10 @@ __pre_execute() {
   chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named" &&
     echo "changed ownership to named"
 
-  chmod -f 777 "$conf_dir/keys" "$data_dir/zones" "/data/log/named" &&
-    chmod -f 777 "$etc_dir/keys" "/tmp/named" "/run/named" "$var_dir/zones" &&
+  chmod -f 777 "$etc_dir" "$data_dir" "$conf_dir/keys" "$data_dir/zones" &&
+    chmod -f 777 "$etc_dir/keys" "/data/log/named" "/tmp/named" "/run/named" "$var_dir/zones" &&
     echo "changed folder permissions to 777"
 
-  sleep 2
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -115,7 +114,7 @@ __run_start_script() {
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
   *)
     su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS &>>/data/log/named/debug.log &
-    sleep 10 && tail -f /data/log/named/* || return 10
+    sleep 60 && tail -f /data/log/named/* || return 10
     ;;
   esac
 }
