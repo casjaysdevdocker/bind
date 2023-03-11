@@ -43,7 +43,7 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  mkdir -p "/config/named" "/data/named/zones" "/tmp/named" "/run/named"
+  mkdir -p "/config/named/keys" "/data/named/zones" "/tmp/named" "/run/named"
   sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf
   sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf
   sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf

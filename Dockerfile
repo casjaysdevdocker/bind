@@ -92,12 +92,13 @@ RUN touch "/etc/profile" "/root/.profile" ; \
 
 RUN set -ex ; \
   mkdir -p "${DEFAULT_CONF_DIR}/named" ${DEFAULT_DATA_DIR}/named ; \
-  [ -d "/etc/named" ] || mkdir -p "/etc/named" ; \
-  [ -d "/var/named" ] || mkdir -p "/var/named" ; \
-  [ -d  "/run/named" ] || mkdir -p "/run/named" ; \
+  [ -d "/run/named" ] || mkdir -p "/run/named" ; \
   [ -d "/var/log/named" ] || mkdir -p "/var/log/named" ; \
-  [ -d "/etc/named/keys" ] || mkdir -p "/etc/named/keys" ; \
-  [ -d "/var/named/zones" ] || mkdir -p "/var/named/zones" ; \
+  [ -d "/tmp/etc/named" ] || mkdir -p "/tmp/etc/named" ; \
+  [ -d "/tmp/var/named" ] || mkdir -p "/tmp/var/named" ; \
+  [ -d "/tmp/etc/named/keys" ] || mkdir -p "/tmp/etc/named/keys" ; \
+  [ -d "/tmp/var/named/zones" ] || mkdir -p "/tmp/var/named/zones" ; \
+  chmod -Rf 777 ${DEFAULT_CONF_DIR}/named ${DEFAULT_DATA_DIR}/named ; \
   [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" && cp -Rf "/tmp/etc/named/." "${DEFAULT_CONF_DIR}/named/" ; \
   [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" && cp -Rf "/tmp/var/named/." "${DEFAULT_DATA_DIR}/named/" ; \
   ln -sf "/dev/stderr" "/var/log/named/debug.log" ; \
