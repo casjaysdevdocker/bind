@@ -47,7 +47,7 @@ __update_conf_files() {
   serial="$(date +'%Y%m%d%S')"
   mkdir -p "/run/named" "/data/log/named" "/data/log"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
-  [ -f "$conf_dir/named.conf" ] || cp -Rf "$etc_dir/." "$conf_dir/"
+  [ -f "$conf_dir/named.user.conf" ] && cp -Rf "$conf_dir/named.user.conf" "$etc_dir/named.conf"
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"                  #&>/dev/null
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"                #&>/dev/null
   sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir/named.conf"                #&>/dev/null
