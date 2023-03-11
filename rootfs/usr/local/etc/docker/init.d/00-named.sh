@@ -19,8 +19,8 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
-__rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return; }
-__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
+__rndc_key() { grep -s 'key "rndc-key" ' /etc/named.conf | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return; }
+__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
 WORKDIR=""                                  # set working directory
@@ -45,13 +45,13 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 __update_conf_files() {
   mkdir -p "$conf_dir/keys" "$data_dir/zones" "/tmp/named" "/run/named" "/data/log/named"
   [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
-  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf &>/dev/null
-  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf &>/dev/null
-  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf &>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf &>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf &>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key &>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
+  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf              #&>/dev/null
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf              #&>/dev/null
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf          #&>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf        #&>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf              #&>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key                #&>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf #&>/dev/null
   #
   if [ ! -f "/var/named/zones/$HOSTNAME.zone" ]; then
     cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
