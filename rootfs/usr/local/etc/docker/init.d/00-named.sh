@@ -23,13 +23,13 @@ __rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC'
 __tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                  # set working directory
-SERVICE_UID="0"                             # set the user id
-SERVICE_USER="root"                         # execute command as another user
-SERVICE_PORT="53"                           # port which service is listening on
-EXEC_CMD_BIN="named"                        # command to execute
-EXEC_CMD_ARGS="-g -c /etc/named/named.conf" # command arguments
-PRE_EXEC_MESSAGE=""                         # Show message before execute
+WORKDIR=""                                       # set working directory
+SERVICE_UID="0"                                  # set the user id
+SERVICE_USER="root"                              # execute command as another user
+SERVICE_PORT="53"                                # port which service is listening on
+EXEC_CMD_BIN="named"                             # command to execute
+EXEC_CMD_ARGS="-f -c /etc/named/named.conf -n 2" # command arguments
+PRE_EXEC_MESSAGE=""                              # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 etc_dir="/etc/named"
@@ -43,13 +43,13 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  mkdir -p "/config/named/keys" "/data/named/zones" "/tmp/named" "/run/named"
-  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf
-  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf
-  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key
+  mkdir -p "/config/named/keys" "/data/named/zones" "/tmp/named" "/run/named" "/data/log/named"
+  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf &>/dev/null
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf &>/dev/null
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf &>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf &>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf &>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key &>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
   [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
   __create_zone
@@ -90,7 +90,7 @@ EOF
   if grep -s -q "named" "/etc/passwd"; then
     chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named"
   fi
-  chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named"
+  chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named" "/data/log/named"
 
   return 0
 }
@@ -99,14 +99,9 @@ __create_zone() {
   [ -f "/var/named/zones/$HOSTNAME.zone" ] && return
   [ -d "$var_dir/zones" ] || mkdir -p "$var_dir/zones"
   cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
-@                               1D IN SOA   $HOSTNAME. root.$HOSTNAME. (
-                                    42    ; serial (yyyymmdd##)
-                                    3H    ; refresh
-                                    15M   ; retry
-                                    1W    ; expiry
-                                    1D )  ; minimum ttl
-                                1D  IN  NS      $HOSTNAME.
-$HOSTNAME.                      1D  IN  A       $CONTAINER_IP4_ADDRESS
+@                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $(date +'%Y%m%d%S') 10800 3600 1209600 38400)
+                          IN  NS      $HOSTNAME.
+$HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 
 EOF
 }
@@ -115,7 +110,10 @@ EOF
 __run_start_script() {
   case "$1" in
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
-  *) su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS || return 10 ;;
+  *)
+    su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS &>>/data/log/named/debug.log &
+    tail -f /data/log/named/* || return 10
+    ;;
   esac
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
