@@ -24,7 +24,7 @@ done
 # execute command variables
 WORKDIR=""                                                                              # set working directory
 SERVICE_UID="0"                                                                         # set the user id
-SERVICE_USER="root"                                                                     # execute command as another user
+SERVICE_USER="nginx"                                                                    # execute command as another user
 SERVICE_PORT="9000"                                                                     # port which service is listening on
 EXEC_CMD_BIN="php-fpm"                                                                  # command to execute
 EXEC_CMD_ARGS="--allow-to-run-as-root --nodaemonize --fpm-config /etc/php/php-fpm.conf" # command arguments
@@ -43,6 +43,10 @@ __update_conf_files() {
       [ -d "/etc/php" ] && rm -Rf "/etc/php"
       ln -sf "$etc_dir" "/etc/php"
     fi
+    [ -f "/var/log/php.log" ] || ln -sf "/dev/stdout" "/var/log/php.log"
+    chmod 777 "/var/log/php.log"
+    sed -i 's|user =.*|user = '$SERVICE_USER'|g' "$etc_dir/php-fpm.d/www.conf"
+    sed -i 's|group =.*|group = '$SERVICE_USER'|g' "$etc_dir/php-fpm.d/www.conf"
     [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
     [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
     [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
@@ -71,14 +75,14 @@ __pre_execute() {
 # script to start server
 __run_start_script() {
   local workdir="${WORKDIR:-$HOME}"
-  local home="${workdir//\/root/\/home\/docker}"
-  local path="/usr/local/bin:/usr/bin"
   local user="${SERVICE_USER//root/daemon}"
   local lc_type="${LC_ALL:-${LC_CTYPE:-$LANG}}"
+  local home="${workdir//\/root/\/home\/docker}"
+  local path="/usr/local/bin:/usr/bin:/bin:/usr/sbin"
   local cmd="$EXEC_CMD_BIN $EXEC_CMD_ARGS"
   case "$1" in
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
-  *) su_cmd env -i HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="$user" bash -c "$cmd" || return 10 ;;
+  *) su_cmd env -i HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="root" sh -c "$cmd" || return 10 ;;
   esac
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -150,7 +154,7 @@ else
 fi
 if [ -n "$WORKDIR" ] && [ -n "$SERVICE_USER" ]; then
   echo "Fixing file permissions"
-  su_cmd chown -Rf $SERVICE_USER $WORKDIR
+  su_cmd chown -Rf $SERVICE_USER "$WORKDIR" "$etc_dir"
 fi
 if __pgrep $EXEC_CMD_BIN && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ]; then
   SERVICE_EXIT_CODE=1
