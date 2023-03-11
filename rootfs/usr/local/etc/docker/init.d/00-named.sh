@@ -88,7 +88,7 @@ EOF
       fi
     fi
   done
-
+  named-checkconf -z /etc/bind/named.conf
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

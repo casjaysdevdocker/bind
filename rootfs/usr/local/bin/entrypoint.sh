@@ -456,9 +456,11 @@ start) # show/start an init script
   ;;
 
 *) # Execute primary command
-  if [ "$START_SERVICES" = "yes" ] && [ ! -f "/run/init.d/entrypoint.pid" ]; then
+  if [ "$START_SERVICES" = "yes" ] || [ ! -f "/run/init.d/entrypoint.pid" ]; then
+    # - - - initializing services - - - #
     echo "$$" >"/run/init.d/entrypoint.pid"
-    __start_init_scripts "/usr/local/etc/docker/init.d" && sleep 3 || sleep 1
+    __start_init_scripts "/usr/local/etc/docker/init.d"
+    # - - - initializing has completed - - - #
     __exec_command tail -f "/var/log/entrypoint.log"
   else
     __exec_command "$@"
