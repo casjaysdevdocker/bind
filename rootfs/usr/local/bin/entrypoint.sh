@@ -459,7 +459,7 @@ start) # show/start an init script
   if [ "$START_SERVICES" = "yes" ] && [ ! -f "/run/init.d/entrypoint.pid" ]; then
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d" && sleep 3 || sleep 1
-    [ -n "$1" ] && exec "$*" || exec "${SHELL:-bash}"
+    [ -n "$1" ] && exec "$*" || { exec tail -f "/var/log/entrypoint.log" || exec "${SHELL:-bash}"; }
     exit 0
   else
     __exec_command "$@"
