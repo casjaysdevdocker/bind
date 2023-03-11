@@ -28,7 +28,7 @@ SERVICE_UID="0"                                  # set the user id
 SERVICE_USER="root"                              # execute command as another user
 SERVICE_PORT="53"                                # port which service is listening on
 EXEC_CMD_BIN="named"                             # command to execute
-EXEC_CMD_ARGS="-f -c /etc/named/named.conf -n 2" # command arguments
+EXEC_CMD_ARGS="-g -n 2 -c /etc/named/named.conf" # command arguments
 PRE_EXEC_MESSAGE=""                              # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
@@ -43,7 +43,8 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  mkdir -p "/config/named/keys" "/data/named/zones" "/tmp/named" "/run/named" "/data/log/named"
+  mkdir -p "$conf_dir/keys" "$data_dir/zones" "/tmp/named" "/run/named" "/data/log/named"
+  [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
   sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf &>/dev/null
   sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf &>/dev/null
   sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf &>/dev/null
@@ -51,21 +52,15 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf &>/dev/null
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key &>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
-  [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
-  __create_zone
+  #
+  cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
+; config for $HOSTNAME
+@                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $(date +'%Y%m%d%S') 10800 3600 1209600 38400)
+                          IN  NS      $HOSTNAME.
+$HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 
-  return 0
-}
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# use this function to setup ssl support
-__update_ssl_conf() {
-
-  return 0
-}
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# function to run before executing
-__pre_execute() {
-  [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
+EOF
+  #
   for dns_file in /data/named/*; do
     file_name="$(basename "$dns_file")"
     domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
@@ -87,23 +82,23 @@ EOF
       fi
     fi
   done
-  if grep -s -q "named" "/etc/passwd"; then
-    chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named"
-  fi
+  #
+  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named"
   chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named" "/data/log/named"
+  return 0
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# use this function to setup ssl support
+__update_ssl_conf() {
 
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-__create_zone() {
-  [ -f "/var/named/zones/$HOSTNAME.zone" ] && return
-  [ -d "$var_dir/zones" ] || mkdir -p "$var_dir/zones"
-  cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
-@                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $(date +'%Y%m%d%S') 10800 3600 1209600 38400)
-                          IN  NS      $HOSTNAME.
-$HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
+# function to run before executing
+__pre_execute() {
+  [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
 
-EOF
+  return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # script to start server
