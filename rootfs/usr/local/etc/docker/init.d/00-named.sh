@@ -49,7 +49,6 @@ __update_conf_files() {
   mkdir -p "/run/named" "/data/log/named"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
   [ -f "$conf_dir/custom.conf" ] && cp -Rf "$conf_dir/custom.conf" "$etc_dir/named.conf"
-  ln -sf "/data/log/named" "/var/log/named"
   #
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"                  #&>/dev/null
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"                #&>/dev/null
@@ -59,6 +58,7 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf"          #&>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/certbot-update.conf" #&>/dev/null
   #
+  chmod -Rf 777 "/data/log"
   for logfile in default debug security; do
     touch "/data/log/named/${logfile}.log"
     chmod -Rf 777 "$file"
@@ -111,8 +111,8 @@ __update_ssl_conf() {
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
   chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/log/named" && echo "changed ownership to named"
-  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/data/log/named" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
-  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/data/log/named" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
+  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
+  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
 
   return 0
 }
