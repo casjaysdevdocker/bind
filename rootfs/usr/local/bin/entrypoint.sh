@@ -450,20 +450,19 @@ start) # show/start an init script
     shift $#
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    exec "${SHELL:-bash}"
+    exec ${SHELL:-bash}
   fi
-  exit $?
   ;;
 
 *) # Execute primary command
   if [ "$START_SERVICES" = "yes" ] || [ ! -f "/run/init.d/entrypoint.pid" ]; then
-    # - - - initializing services - - - #
+    echo # - - - initializing services - - - #
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    # - - - initializing has completed - - - #
+    echo # - - - initializing has completed - - - #
     __exec_command tail -f "/var/log/entrypoint.log"
   else
-    __exec_command "$@"
+    __exec_command "${@:-bash}"
     exit $?
   fi
   ;;
