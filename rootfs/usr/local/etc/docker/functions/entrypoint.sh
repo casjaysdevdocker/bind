@@ -360,13 +360,9 @@ MARIADB_CONFIG_FILE="${MARIADB_CONFIG_FILE:-$(__find_mysql_conf)}"
 POSTGRES_CONFIG_FILE="${POSTGRES_CONFIG_FILE:-$(__find_pgsql_conf)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # export variables
-export CONTAINER_IP4_ADDRESS CONTAINER_IP6_ADDRESS
-export PHP_INI_DIR PHP_BIN_DIR HTTPD_CONFIG_FILE
-export NGINX_CONFIG_FILE MYSQL_CONFIG_FILE PGSQL_CONFIG_FILE
-export ENTRYPOINT_FIRST_RUN SET_RANDOM_PASS
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # export the functions
-export -f __update_ssl_certs __certbot __create_ssl_cert __init_apache __init_nginx
-export -f __init_php __init_mysql __init_mongodb __init_postgres __init_couchdb
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # end of functions
