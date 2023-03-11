@@ -98,7 +98,8 @@ __update_ssl_conf() {
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
   chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named" && echo "changed ownership to named"
-  chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named" "/data/log/named" && echo "changed folder permissions to 777"
+  chmod -f 777 "/etc/named" "/etc/named/keys" "/var/named/zones"
+  chmod -f 777 "/var/named" "/tmp/named" "/data/log/named" && echo "changed folder permissions to 777"
   sleep 2
 
   return 0
