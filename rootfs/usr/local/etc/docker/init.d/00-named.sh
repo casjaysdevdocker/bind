@@ -59,6 +59,11 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf"          #&>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/certbot-update.conf" #&>/dev/null
   #
+  touch "/var/log/named/debug.log"
+  for logfile in security notify database resolver default; do
+    ln -sf "/var/log/entrypoint.log" "/var/log/named/${logfile}.log"
+    chmod -Rf 777 "$file"
+  done
   #
   zone_files="$(find "$data_dir/zones/" -type f | wc -l)"
   if [ $zone_files = 0 ] && [ ! -f "$data_dir/zones/$HOSTNAME.zone" ]; then
