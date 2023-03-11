@@ -46,7 +46,7 @@ __update_conf_files() {
   local zone_files="" serial=""
   serial="$(date +'%Y%m%d%S')"
   #
-  mkdir -p "/run/named" "/data/log/named" "/data/log"
+  mkdir -p "/run/named" "/data/log/named"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
   [ -f "$conf_dir/custom.conf" ] && cp -Rf "$conf_dir/custom.conf" "$etc_dir/named.conf"
   ln -sf "/data/log/named" "/var/log/named"
@@ -59,9 +59,8 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf"          #&>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/certbot-update.conf" #&>/dev/null
   #
-  touch "/var/log/named/debug.log"
-  for logfile in security notify database resolver default; do
-    ln -sf "/var/log/entrypoint.log" "/var/log/named/${logfile}.log"
+  for logfile in default debug security; do
+    touch "/data/log/named/${logfile}.log"
     chmod -Rf 777 "$file"
   done
   #
