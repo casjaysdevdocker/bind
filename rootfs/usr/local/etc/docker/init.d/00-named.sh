@@ -76,14 +76,14 @@ EOF
       cp -Rf "$dns_file" "$var_dir/zones/$file_name"
       if ! grep -qs "$domain_name" "$etc_dir/named.conf" && [ -n "$domain_name" ]; then
         cat <<EOF >>"$etc_dir/named.conf"
-  #  ********** begin $domain_name **********
-  zone "$domain_name" {
-        type master;
-        file "$var_dir/zones/$file_name";
-        notify yes;
-        allow-update {key "certbot."; key "dhcp-key"; trusted;};
-        allow-transfer { any; key "backup-key"; };
-    };
+#  ********** begin $domain_name **********
+zone "$domain_name" {
+    type master;
+    file "$var_dir/zones/$file_name";
+    notify yes;
+    allow-update {key "certbot."; key "dhcp-key"; trusted;};
+    allow-transfer { any; key "backup-key"; };
+};
 #  ********** end $domain_name **********
 
 EOF
@@ -91,7 +91,7 @@ EOF
       fi
     fi
   done
-  named-checkconf -z /etc/bind/named.conf
+  named-checkconf -z /etc/bind/named.conf &>/dev/null && echo "named-checkconf has succeeded"
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
