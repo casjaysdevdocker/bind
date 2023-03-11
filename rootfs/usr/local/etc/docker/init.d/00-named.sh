@@ -45,9 +45,12 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 __update_conf_files() {
   local zone_files="" serial=""
   serial="$(date +'%Y%m%d%S')"
+  #
   mkdir -p "/run/named" "/data/log/named" "/data/log"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
-  [ -f "$conf_dir/named.user.conf" ] && cp -Rf "$conf_dir/named.user.conf" "$etc_dir/named.conf"
+  [ -f "$conf_dir/custom.conf" ] && cp -Rf "$conf_dir/custom.conf" "$etc_dir/named.conf"
+  ln -sf "/data/log/named" "/var/log/named"
+  #
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"                  #&>/dev/null
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"                #&>/dev/null
   sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir/named.conf"                #&>/dev/null
@@ -56,7 +59,6 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf"          #&>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/certbot-update.conf" #&>/dev/null
   #
-  ln -sf "/data/log/named" "/var/log/named"
   #
   zone_files="$(find "$data_dir/zones/" -type f | wc -l)"
   if [ $zone_files = 0 ] && [ ! -f "$data_dir/zones/$HOSTNAME.zone" ]; then
