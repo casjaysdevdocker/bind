@@ -256,6 +256,7 @@ __exec_command() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Setup the server init scripts
 __start_init_scripts() {
+  { [ "$1" = "" ] && shift 1; } || { [ "$1" = " " ] && shift 1; }
   [ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
   local basename=""
   local init_pids=""
@@ -268,7 +269,7 @@ __start_init_scripts() {
     for init in "$init_dir"/*.sh; do
       if [ -f "$init" ]; then
         name="$(basename "$init")"
-        (eval "$init" | tee -a /var/log/entrypoint.log &)
+        (eval "$init" &)
         initStatus=$(($? + initStatus))
         sleep 10
         echo ""
@@ -287,11 +288,12 @@ __setup_mta() {
   local account_domain="${EMAIL_DOMAIN//*@/}"
   echo "$EMAIL_RELAY" | grep '[0-9][0-9]' || relay_port="465"
 
-  if [ -d "/etc/ssmtp" ] || [ -d "/config/ssmtp" ]; then
-    # sSMTP relay setup
-    [ -d "/etc/ssmtp" ] && rm -Rf "/etc/ssmtp" || return 0
+  ################# sSMTP relay setup
+  if [ -n "$(type -P 'ssmtp')" ] || [ -d "/etc/ssmtp" ] || [ -d "/config/ssmtp" ]; then
     [ -d "/config/ssmtp" ] || mkdir -p "/config/ssmtp"
-    cat <<EOF | tee "/config/ssmtp/ssmtp.conf" &>/dev/null
+    [ -f "/etc/ssmtp/ssmtp.conf" ] && rm -Rf "/etc/ssmtp/ssmtp.conf"
+    if [ ! -f "/config/ssmtp/ssmtp.conf" ]; then
+      cat <<EOF | tee "/config/ssmtp/ssmtp.conf" &>/dev/null
 # ssmtp configuration.
 root=${account_user:-root}@${account_domain:-$HOSTNAME}
 mailhub=${relay_server:-172.17.0.1}:$relay_port
@@ -306,12 +308,19 @@ FromLineOverride=yes
 #AuthPass=password
 
 EOF
+    fi
+    if [ -f "/config/ssmtp/ssmtp.conf" ]; then
+      cp -Rf "/config/ssmtp/." "/etc/ssmtp/"
+    fi
 
-    # postfix relay setup
-  elif [ -d "/config/postfix" ] || [ -d "/etc/postfix" ]; then
-    cat <<EOF | tee "/config/postfix/main.cf" &>/dev/null
+    ################# postfix relay setup
+  elif [ -n "$(type -P 'postfix')" ] || [ -d "/config/postfix" ] || [ -d "/etc/postfix" ]; then
+    [ -d "/etc/postfix" ] || mkdir -p "/etc/postfix"
+    [ -f "/etc/postfix/main.cf" ] && rm -Rf "/etc/postfix/main.cf"
+    if [ ! -f "/config/postfix/main.cf" ]; then
+      cat <<EOF | tee "/config/postfix/main.cf" &>/dev/null
 # postfix configuration.
-smtpd_banner = \$myhostname ESMTP CasjaysDev mail
+smtpd_banner = \$myhostname ESMTP email server
 compatibility_level = 2
 alias_maps = hash:/etc/postfix/aliases
 alias_database = hash:/etc/postfix/aliases
@@ -335,6 +344,7 @@ relayhost = [$relay_server]:$relay_port
 inet_protocols = ipv4
 
 EOF
+    fi
     touch "/config/postfix/aliases" "/config/postfix/mynetworks" "/config/postfix/transport"
     touch "/config/postfix/mydomains.pcre" "/config/postfix/mydomains" "/config/postfix/virtual"
     if [ -f "/config/postfix/main.cf" ] && [ ! -f "/run/init.d/postfix.pid" ]; then
