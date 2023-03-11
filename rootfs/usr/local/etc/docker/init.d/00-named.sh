@@ -72,7 +72,7 @@ EOF
     if [ -f "$dns_file" ]; then
       cp -Rf "$dns_file" "$var_dir/zones/$file_name"
       if ! grep -qs "$domain_name" "$etc_dir/named.conf" && [ -n "$domain_name" ]; then
-        cat <<EOF
+        cat <<EOF >>"$etc_dir/named.conf"
   #  ********** begin $domain_name **********
   zone "$domain_name" {
         type master;
