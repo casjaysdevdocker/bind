@@ -107,6 +107,10 @@ WEB_SERVER_PORTS="$(echo "$WEB_SERVER_PORTS" | tr ' ' '\n' | sort -u | grep -v '
 # export variables
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# variables based on env/files
+[ -f "/config/.enable_ssh" ] && SSL_ENABLED="true"
+[ "$WEB_SERVER_PORT" = "443" ] && SSL_ENABLED="true"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default directories
 BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
 WWW_ROOT_DIR="${WWW_ROOT_DIR:-/data/htdocs}"
@@ -115,26 +119,31 @@ DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
 DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
 DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Create the backup dir
+[ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Show start message
 if [ "$CONFIG_DIR_INITIALIZED" = "false" ] || [ "$DATA_DIR_INITIALIZED" = "false" ]; then
   [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Executing entrypoint script for bind"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# create required directories
-mkdir -p "/run" && chmod -f 777 "/run"
-mkdir -p "/tmp" && chmod -f 777 "/tmp"
-mkdir -p "/root" && chmod -f 700 "/root"
-mkdir -p "/run/init.d" && chmod -f 777 "/run/init.d"
-mkdir -p "/config/secure" && chmod -f 777 "/config/secure"
-[ -f "/config/.enable_ssh" ] && SSL_ENABLED="true"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # create required files
-touch "/tmp/entrypoint.log"
+ln -sf "/dev/stdout" "/var/log/entrypoint.log"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Create the backup dir
-[ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR"
+# create required directories
+mkdir -p "/run"
+mkdir -p "/tmp"
+mkdir -p "/root"
+mkdir -p "/run/init.d"
+mkdir -p "/config/secure"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-[ "$WEB_SERVER_PORT" = "443" ] && SSL_ENABLED="true"
+# fix permissions
+chmod -f 777 "/run"
+chmod -f 777 "/tmp"
+chmod -f 700 "/root"
+chmod -f 777 "/run/init.d"
+chmod -f 777 "/config/secure"
+chmod -f 777 "/var/log/entrypoint.log"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set timezone
 [ -n "$TZ" ] && [ -w "/etc/timezone" ] && echo "$TZ" >"/etc/timezone"

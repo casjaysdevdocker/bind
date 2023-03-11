@@ -265,7 +265,7 @@ __start_init_scripts() {
     for init in "$init_dir"/*.sh; do
       if [ -f "$init" ]; then
         name="$(basename "$init")"
-        (eval "$init" 2>/dev/stderr >/dev/stdout &)
+        (eval "$init" | tee -a /var/log/entrypoint.log &)
         initStatus=$(($? + initStatus))
         sleep 10
         echo ""

@@ -110,14 +110,14 @@ __pre_execute() {
 # script to start server
 __run_start_script() {
   local workdir="${WORKDIR:-$HOME}"
+  local cmd="$EXEC_CMD_BIN $EXEC_CMD_ARGS"
   local user="${SERVICE_USER//root/daemon}"
   local lc_type="${LC_ALL:-${LC_CTYPE:-$LANG}}"
   local home="${workdir//\/root/\/home\/docker}"
   local path="/usr/local/bin:/usr/bin:/bin:/usr/sbin"
-  local cmd="$EXEC_CMD_BIN $EXEC_CMD_ARGS"
   case "$1" in
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
-  *) su_cmd env -i HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="$user" "$cmd" || return 10 ;;
+  *) su_cmd env -i HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="$user" sh -c "$cmd" || return 10 ;;
   esac
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -197,7 +197,7 @@ if __pgrep $EXEC_CMD_BIN && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ]; then
 else
   echo "Starting service: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
   su_cmd touch /run/init.d/$EXEC_CMD_BIN.pid
-  __run_start_script "$@" |& tee -a "/tmp/entrypoint.log" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
+  __run_start_script "$@" |& tee -a "/var/log/entrypoint.log" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
   [ "$?" -ne 0 ] && SERVICE_IS_RUNNING="false" && SERVICE_EXIT_CODE=10 && rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
