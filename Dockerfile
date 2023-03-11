@@ -91,17 +91,14 @@ RUN touch "/etc/profile" "/root/.profile" ; \
   BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh"
 
 RUN set -ex ; \
-  rm -Rf "/etc/rndc"* "/etc/bind"* "/var/bind"* ; \
-  mkdir -p "${DEFAULT_CONF_DIR}/named" ${DEFAULT_DATA_DIR}/named ; \
-  [ -d "/run/named" ] || mkdir -p "/run/named" ; \
-  [ -d "/tmp/etc/named" ] || mkdir -p "/tmp/etc/named" ; \
-  [ -d "/tmp/var/named" ] || mkdir -p "/tmp/var/named" ; \
-  [ -d "/tmp/etc/named/keys" ] || mkdir -p "/tmp/etc/named/keys" ; \
-  [ -d "/tmp/var/named/zones" ] || mkdir -p "/tmp/var/named/zones" ; \
-  chmod -Rf 777 ${DEFAULT_CONF_DIR}/named ${DEFAULT_DATA_DIR}/named ; \
-  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" && cp -Rf "/tmp/etc/named/." "${DEFAULT_CONF_DIR}/named/" ; \
-  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" && cp -Rf "/tmp/var/named/." "${DEFAULT_DATA_DIR}/named/" ; \
-  chown -Rf named:named /etc/named /var/named /run/named ${DEFAULT_CONF_DIR}/named ${DEFAULT_DATA_DIR}/named
+  etc_dir="/etc/bind" var_dir="/var/bind" data_dir="/data/named" conf_dir="/config/named"; \
+  rm -Rf "/etc/rndc"* "/etc/bind/"* "/var/bind/"* ; \
+  mkdir -p "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" "/run/named" "/tmp/etc/named" "/tmp/var/named" "/tmp/etc/named/keys" "/tmp/var/named/zones" ; \
+  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "$etc_dir/" && cp -Rf "/tmp/etc/named/." "${DEFAULT_CONF_DIR}/named/" ; \
+  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "$var_dir/" && cp -Rf "/tmp/var/named/." "${DEFAULT_DATA_DIR}/named/" ; \
+  chown -Rf named:named "$etc_dir" "$var_dir" /var/named /run/named "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" ; \
+  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777" ; \
+  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
 
 RUN echo 'Running cleanup' 
 

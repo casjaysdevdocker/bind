@@ -23,19 +23,19 @@ __rndc_key() { grep -s 'key "rndc-key" ' /etc/named.conf | grep -v 'KEY_RNDC' | 
 __tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                  # set working directory
-SERVICE_UID="0"                             # set the user id
-SERVICE_USER="root"                         # execute command as another user
-SERVICE_PORT="53"                           # port which service is listening on
-EXEC_CMD_BIN="named"                        # command to execute
-EXEC_CMD_ARGS="-g -c /etc/named/named.conf" # command arguments
-PRE_EXEC_MESSAGE=""                         # Show message before execute
+WORKDIR=""                                 # set working directory
+SERVICE_UID="0"                            # set the user id
+SERVICE_USER="root"                        # execute command as another user
+SERVICE_PORT="53"                          # port which service is listening on
+EXEC_CMD_BIN="named"                       # command to execute
+EXEC_CMD_ARGS="-f -c /etc/bind/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                        # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
-etc_dir="/etc/named"
-var_dir="/var/named"
-conf_dir="/config/named"
+etc_dir="/etc/bind"
+var_dir="/var/bind"
 data_dir="/data/named"
+conf_dir="/config/named"
 KEY_RNDC="${KEY_RNDC:-$(__tsig_key)}"
 KEY_DHCP="${KEY_DHCP:-$(__tsig_key)}"
 KEY_BACKUP="${KEY_BACKUP:-$(__tsig_key)}"
@@ -43,19 +43,21 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  mkdir -p "$conf_dir/keys" "$data_dir/zones" "/data/log/named"
-  mkdir -p "$etc_dir/keys" "/tmp/named" "/run/named" "$var_dir/zones"
-  [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
-  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf              #&>/dev/null
-  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf              #&>/dev/null
-  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf          #&>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf        #&>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf              #&>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key                #&>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf #&>/dev/null
+  mkdir -p "/run/named" "/data/log/named" "/data/log"
+  mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
+  [ -f "$conf_dir/named.conf" ] || cp -Rf "$etc_dir/." "$conf_dir/"
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"                  #&>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"                #&>/dev/null
+  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir/named.conf"                #&>/dev/null
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir/named.conf"                #&>/dev/null
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir/named.conf"            #&>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf"          #&>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/certbot-update.conf" #&>/dev/null
   #
-  if [ ! -f "/var/named/zones/$HOSTNAME.zone" ]; then
-    cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
+  ln -sf "/data/log/named" "/var/log/named"
+  #
+  if [ ! -f "$var_dir/zones/$HOSTNAME.zone" ]; then
+    cat <<EOF | tee "$var_dir/zones/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $(date +'%Y%m%d%S') 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
@@ -98,12 +100,9 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
-  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named" &&
-    echo "changed ownership to named"
-
-  chmod -f 777 "$etc_dir" "$data_dir" "$conf_dir/keys" "$data_dir/zones" &&
-    chmod -f 777 "$etc_dir/keys" "/data/log/named" "/tmp/named" "/run/named" "$var_dir/zones" &&
-    echo "changed folder permissions to 777"
+  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/log/named" && echo "changed ownership to named"
+  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/data/log/named" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
+  find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/data/log/named" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
 
   return 0
 }
@@ -113,7 +112,7 @@ __run_start_script() {
   case "$1" in
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
   *)
-    su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS &>>/data/log/named/debug.log &
+    su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS | tee -a /data/log/named/debug.log &
     sleep 60 && tail -f /data/log/named/* || return 10
     ;;
   esac
