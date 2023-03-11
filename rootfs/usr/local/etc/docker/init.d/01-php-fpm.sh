@@ -43,8 +43,13 @@ __update_conf_files() {
       [ -d "/etc/php" ] && rm -Rf "/etc/php"
       ln -sf "$etc_dir" "/etc/php"
     fi
-    [ "${SERVICE_USER:-$USER}" = "root" ] || sed -i 's|user =.*|user = '$SERVICE_USER'|g' "$etc_dir/php-fpm.d/www.conf"
-    [ "${SERVICE_USER:-$USER}" = "root" ] || sed -i 's|group =.*|group = '$SERVICE_USER'|g' "$etc_dir/php-fpm.d/www.conf"
+    #
+    if [ "${SERVICE_USER:-$USER}" != "root" ]; then
+      sed -i 's|user =.*|user = '$SERVICE_USER'|g' "$etc_dir/php-fpm.d/www.conf"
+      sed -i 's|group =.*|group = '$SERVICE_USER'|g' "$etc_dir/php-fpm.d/www.conf"
+      chown -Rf "$SERVICE_USER" "$etc_dir"
+    fi
+    #
     [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
     [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
     [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
@@ -80,7 +85,7 @@ __run_start_script() {
   local path="/usr/local/bin:/usr/bin:/bin:/usr/sbin"
   case "$1" in
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
-  *) su_cmd env -i HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="root" sh -c "$cmd" || return 10 ;;
+  *) su_cmd env -i PWD="$home" HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="root" sh -c "$cmd" || return 10 ;;
   esac
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

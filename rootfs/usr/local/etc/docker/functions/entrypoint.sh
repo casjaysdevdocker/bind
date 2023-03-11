@@ -92,19 +92,21 @@ __create_ssl_cert() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_apache() {
-  local etc_dir="/etc/${1:-apache2}"
-  local conf_dir="/config/${1:-apache2}"
-  local www_dir="${WWW_ROOT_DIR:-/data/htdocs/www}"
-  local apache_bin="$(type -P 'httpd' || type -P 'apache2')"
+  local etc_dir="" conf_dir="" conf_dir="" www_dir="" apache_bin=""
+  etc_dir="/etc/${1:-apache2}"
+  conf_dir="/config/${1:-apache2}"
+  www_dir="${WWW_ROOT_DIR:-/data/htdocs/www}"
+  apache_bin="$(type -P 'httpd' || type -P 'apache2')"
   #
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_nginx() {
-  local etc_dir="/etc/${1:-nginx}"
-  local conf_dir="/config/${1:-nginx}"
-  local www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
-  local nginx_bin="$(type -P 'nginx')"
+  local etc_dir="" conf_dir="" www_dir="" nginx_bin=""
+  etc_dir="/etc/${1:-nginx}"
+  conf_dir="/config/${1:-nginx}"
+  www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
+  nginx_bin="$(type -P 'nginx')"
   #
   return 0
 }
@@ -118,14 +120,15 @@ __init_php() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_mysql() {
-  local db_dir="/data/db/mysql"
-  local etc_dir="${home:-/etc/${1:-mysql}}"
-  local db_user="${SERVICE_USER:-mysql}"
-  local conf_dir="/config/${1:-mysql}"
-  local user_pass="${MARIADB_PASSWORD:-$MARIADB_ROOT_PASSWORD}"
-  local user_db="${MARIADB_DATABASE}" user_name="${MARIADB_USER:-root}"
-  local root_pass="$MARIADB_ROOT_PASSWORD"
-  local mysqld_bin="$(type -P 'mysqld')"
+  local db_dir="" etc_dir="" db_user="" conf_dir="" user_pass="" user_db="" root_pass="" mysqld_bin=""
+  db_dir="/data/db/mysql"
+  etc_dir="${home:-/etc/${1:-mysql}}"
+  db_user="${SERVICE_USER:-mysql}"
+  conf_dir="/config/${1:-mysql}"
+  user_pass="${MARIADB_PASSWORD:-$MARIADB_ROOT_PASSWORD}"
+  user_db="${MARIADB_DATABASE}" user_name="${MARIADB_USER:-root}"
+  root_pass="$MARIADB_ROOT_PASSWORD"
+  mysqld_bin="$(type -P 'mysqld')"
   #
   return 0
 }

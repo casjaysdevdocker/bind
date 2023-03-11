@@ -108,8 +108,8 @@ WEB_SERVER_PORTS="$(echo "$WEB_SERVER_PORTS" | tr ' ' '\n' | sort -u | grep -v '
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # variables based on env/files
+[ "$SERVICE_PORT" = "443" ] && SSL_ENABLED="true"
 [ -f "/config/.enable_ssh" ] && SSL_ENABLED="true"
-[ "$WEB_SERVER_PORT" = "443" ] && SSL_ENABLED="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default directories
 BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
