@@ -15,8 +15,8 @@ ARG IMAGE_REPO="alpine"
 ARG IMAGE_VERSION="latest"
 ARG CONTAINER_VERSION="${IMAGE_VERSION}"
 
-ARG SERVICE_PORT=""
-ARG EXPOSE_PORTS=""
+ARG SERVICE_PORT="80"
+ARG EXPOSE_PORTS="80 53/tcp 53/upd"
 ARG PHP_VERSION="php81"
 ARG NODE_VERSION="system"
 ARG NODE_MANAGER="system"
@@ -180,7 +180,7 @@ COPY --from=build /. /
 
 VOLUME [ "/config","/data" ]
 
-EXPOSE ${EXPOSE_PORTS}
+EXPOSE ${ENV_PORTS}
 
 #CMD [ "" ]
 ENTRYPOINT [ "tini", "-p", "SIGTERM", "--", "/usr/local/bin/entrypoint.sh" ]
