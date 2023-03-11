@@ -43,7 +43,8 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  mkdir -p "$conf_dir/keys" "$data_dir/zones" "/tmp/named" "/run/named" "/data/log/named"
+  mkdir -p "$conf_dir/keys" "$data_dir/zones" "/data/log/named"
+  mkdir -p "$etc_dir/keys" "/tmp/named" "/run/named" "$var_dir/zones"
   [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
   sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf              #&>/dev/null
   sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf              #&>/dev/null
@@ -97,11 +98,14 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
-  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named" && echo "changed ownership to named"
-  chmod -f 777 "/etc/named" "/etc/named/keys" "/var/named/zones"
-  chmod -f 777 "/var/named" "/tmp/named" "/data/log/named" && echo "changed folder permissions to 777"
-  sleep 2
+  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named" &&
+    echo "changed ownership to named"
 
+  chmod -f 777 "$conf_dir/keys" "$data_dir/zones" "/data/log/named" &&
+    chmod -f 777 "$etc_dir/keys" "/tmp/named" "/run/named" "$var_dir/zones" &&
+    echo "changed folder permissions to 777"
+
+  sleep 2
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
