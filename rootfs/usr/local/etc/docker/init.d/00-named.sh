@@ -43,6 +43,7 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
+  local zone_files=""
   mkdir -p "/run/named" "/data/log/named" "/data/log"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
   [ -f "$conf_dir/named.conf" ] || cp -Rf "$etc_dir/." "$conf_dir/"
@@ -56,7 +57,8 @@ __update_conf_files() {
   #
   ln -sf "/data/log/named" "/var/log/named"
   #
-  if [ ! -f "$var_dir/zones/$HOSTNAME.zone" ]; then
+  zone_files="$(find "$data_dir/zones/" -type f | wc -l)"
+  if [ $zone_files = 0 ] && [ ! -f "$data_dir/zones/$HOSTNAME.zone" ]; then
     cat <<EOF | tee "$var_dir/zones/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $(date +'%Y%m%d%S') 10800 3600 1209600 38400)
