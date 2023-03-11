@@ -62,7 +62,7 @@ __update_conf_files() {
   #
   zone_files="$(find "$data_dir/zones/" -type f | wc -l)"
   if [ $zone_files = 0 ] && [ ! -f "$data_dir/zones/$HOSTNAME.zone" ]; then
-    cat <<EOF | tee "$var_dir/zones/$HOSTNAME.zone" &>/dev/null
+    cat <<EOF | tee "$data_dir/zones/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $serial 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
