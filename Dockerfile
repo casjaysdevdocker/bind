@@ -91,22 +91,22 @@ RUN touch "/etc/profile" "/root/.profile" ; \
   BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh"
 
 RUN set -ex ; \
-  mkdir -p "${DEFAULT_DATA_DIR}/named" ; \
-  [ -d "/etc/named" ] ||mkdir -p "/etc/named" ; \
-  [ -d "/var/named" ] ||mkdir -p "/var/named" ; \
+  mkdir -p "${DEFAULT_CONF_DIR}/named" ${DEFAULT_DATA_DIR}/named ; \
+  [ -d "/etc/named" ] || mkdir -p "/etc/named" ; \
+  [ -d "/var/named" ] || mkdir -p "/var/named" ; \
   [ -d  "/run/named" ] || mkdir -p "/run/named" ; \
-  [ -d "/var/log/named"  ] || mkdir -p "/var/log/named" ; \
-  [ -d "/etc/named/keys"  ] || mkdir -p "/etc/named/keys" ; \
+  [ -d "/var/log/named" ] || mkdir -p "/var/log/named" ; \
+  [ -d "/etc/named/keys" ] || mkdir -p "/etc/named/keys" ; \
   [ -d "/var/named/zones" ] || mkdir -p "/var/named/zones" ; \
-  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" ; \
-  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" ; \
+  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" && cp -Rf "/tmp/etc/named/." "${DEFAULT_CONF_DIR}/named/" ; \
+  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" && cp -Rf "/tmp/var/named/." "${DEFAULT_DATA_DIR}/named/" ; \
   ln -sf "/dev/stderr" "/var/log/named/debug.log" ; \
   for f in /var/log/named/{default,security,xfer-in,xfer-out,update,notify,query}.log; do ln -sf /dev/stdout "$f";done ; \
-  chmod 777 "/var/log/named/" ; \
-  chown -Rf named:named /etc/named /var/named /var/log/named /run/named
+  chmod 777 "/var/log/named" ; \
+  chown -Rf named:named /etc/named /var/named /var/log/named /run/named ${DEFAULT_CONF_DIR}/named ${DEFAULT_DATA_DIR}/named
 
 RUN echo 'Running cleanup' ; \
-  rm -Rf "/etc/rndc"* "/etc/named"* "/etc/bind/"* "/var/bind"/*
+  rm -Rf "/etc/rndc"* "/etc/bind"* "/var/bind"*
 
 RUN rm -Rf "/config" "/data" ; \
   rm -rf /etc/systemd/system/*.wants/* ; \
