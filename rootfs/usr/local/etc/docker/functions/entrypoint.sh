@@ -268,6 +268,7 @@ __start_init_scripts() {
         (eval "$init" 2>/dev/stderr >/dev/stdout &)
         initStatus=$(($? + initStatus))
         sleep 10
+        echo ""
       fi
     done
   fi

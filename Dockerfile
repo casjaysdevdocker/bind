@@ -91,6 +91,7 @@ RUN touch "/etc/profile" "/root/.profile" ; \
   BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh"
 
 RUN set -ex ; \
+  rm -Rf "/etc/rndc"* "/etc/bind"* "/var/bind"* ; \
   mkdir -p "${DEFAULT_CONF_DIR}/named" ${DEFAULT_DATA_DIR}/named ; \
   [ -d "/run/named" ] || mkdir -p "/run/named" ; \
   [ -d "/tmp/etc/named" ] || mkdir -p "/tmp/etc/named" ; \
@@ -102,8 +103,7 @@ RUN set -ex ; \
   [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" && cp -Rf "/tmp/var/named/." "${DEFAULT_DATA_DIR}/named/" ; \
   chown -Rf named:named /etc/named /var/named /run/named ${DEFAULT_CONF_DIR}/named ${DEFAULT_DATA_DIR}/named
 
-RUN echo 'Running cleanup' ; \
-  rm -Rf "/etc/rndc"* "/etc/bind"* "/var/bind"*
+RUN echo 'Running cleanup' 
 
 RUN rm -Rf "/config" "/data" ; \
   rm -rf /etc/systemd/system/*.wants/* ; \

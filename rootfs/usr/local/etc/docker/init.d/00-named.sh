@@ -23,13 +23,13 @@ __rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC'
 __tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                       # set working directory
-SERVICE_UID="0"                                  # set the user id
-SERVICE_USER="root"                              # execute command as another user
-SERVICE_PORT="53"                                # port which service is listening on
-EXEC_CMD_BIN="named"                             # command to execute
-EXEC_CMD_ARGS="-g -n 2 -c /etc/named/named.conf" # command arguments
-PRE_EXEC_MESSAGE=""                              # Show message before execute
+WORKDIR=""                                  # set working directory
+SERVICE_UID="0"                             # set the user id
+SERVICE_USER="root"                         # execute command as another user
+SERVICE_PORT="53"                           # port which service is listening on
+EXEC_CMD_BIN="named"                        # command to execute
+EXEC_CMD_ARGS="-g -c /etc/named/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                         # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 etc_dir="/etc/named"
@@ -53,15 +53,17 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key &>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
   #
-  cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
+  if [ ! -f "/var/named/zones/$HOSTNAME.zone" ]; then
+    cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $(date +'%Y%m%d%S') 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
 $HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 
 EOF
+  fi
   #
-  for dns_file in /data/named/*; do
+  for dns_file in "$data_dir/zones"/*; do
     file_name="$(basename "$dns_file")"
     domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
     if [ -f "$dns_file" ]; then
@@ -82,9 +84,7 @@ EOF
       fi
     fi
   done
-  #
-  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named"
-  chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named" "/data/log/named"
+
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -97,6 +97,9 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
+  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named" && echo "changed ownership to named"
+  chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named" "/data/log/named" && echo "changed folder permissions to 777"
+  sleep 2
 
   return 0
 }
@@ -107,7 +110,7 @@ __run_start_script() {
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
   *)
     su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS &>>/data/log/named/debug.log &
-    tail -f /data/log/named/* || return 10
+    sleep 10 && tail -f /data/log/named/* || return 10
     ;;
   esac
 }
