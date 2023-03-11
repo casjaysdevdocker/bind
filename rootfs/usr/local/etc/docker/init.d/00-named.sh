@@ -90,6 +90,7 @@ EOF
   if grep -s -q "named" "/etc/passwd"; then
     chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named"
   fi
+  chmod -f 777 "$etc_dir/named" "$etc_dir/named/keys" "$var_dir/zones" "/var/named" "/tmp/named"
 
   return 0
 }
