@@ -50,7 +50,7 @@ SERVICE_PORT=""     # specifiy port which service is listening on
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
 HEALTH_ENABLED="yes"                     # enable healthcheck [yes/no]
-SERVICES_LIST="tini"                     # comma seperated list of processes for the healthcheck
+SERVICES_LIST="tini,named,nginx,php-fpm" # comma seperated list of processes for the healthcheck
 WEB_SERVER_PORTS="${WEB_SERVER_PORTS:-}" # ports : 80,443
 HEALTH_ENDPOINTS="${HEALTH_ENDPOINTS:-}" # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -459,8 +459,7 @@ start) # show/start an init script
   if [ "$START_SERVICES" = "yes" ] && [ ! -f "/run/init.d/entrypoint.pid" ]; then
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d" && sleep 3 || sleep 1
-    [ -n "$1" ] && exec "$*" || { exec tail -f "/var/log/entrypoint.log" || exec "${SHELL:-bash}"; }
-    exit 0
+    exec tail -f "/var/log/entrypoint.log"
   else
     __exec_command "$@"
     exit $?
