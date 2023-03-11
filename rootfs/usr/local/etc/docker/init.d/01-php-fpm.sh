@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
+[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 export PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # run trap command on exit
-trap -- 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "true" ] && [ -f "/run/$EXEC_CMD_BIN.init.pid" ] && rm -Rf "/run/$EXEC_CMD_BIN.init.pid";exit $retVal' SIGINT SIGTERM EXIT
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
-[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
+trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "true" ] && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ] && rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid";exit $retVal' SIGINT SIGTERM EXIT
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import the functions file
 if [ -f "/usr/local/etc/docker/functions/entrypoint.sh" ]; then
@@ -22,15 +22,13 @@ done
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                                                              # change to directory
-ALT_SCRIPT="no"                                                                         # Set to yes to run the __alt_execute_script
+WORKDIR=""                                                                              # set working directory
+SERVICE_UID="0"                                                                         # set the user id
 SERVICE_USER="root"                                                                     # execute command as another user
-SERVICE_UID="9000"                                                                      # set the user id
 SERVICE_PORT="9000"                                                                     # port which service is listening on
 EXEC_CMD_BIN="php-fpm"                                                                  # command to execute
 EXEC_CMD_ARGS="--allow-to-run-as-root --nodaemonize --fpm-config /etc/php/php-fpm.conf" # command arguments
 PRE_EXEC_MESSAGE=""                                                                     # Show message before execute
-SERVICE_EXIT_CODE=0                                                                     # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 conf_dir="/config/php"
@@ -65,12 +63,18 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
+  [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
 
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# alternate script to start server
-__alt_execute_script() { true; }
+# script to start server
+__run_start_script() {
+  case "$1" in
+  check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
+  *) su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS || return 10 ;;
+  esac
+}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # process check functions
 __pcheck() { [ -n "$(type -P pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null && return 0 || return 10; }
@@ -80,13 +84,13 @@ __pgrep() { __pcheck "${1:-EXEC_CMD_BIN}" || __ps aux 2>/dev/null | grep -Fw " $
 [ -f "/config/env/$EXEC_CMD_BIN.sh" ] && "/config/env/$EXEC_CMD_BIN.sh" # Import env file
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 WORKDIR="${ENV_WORKDIR:-$WORKDIR}"                            # change to directory
-ALT_SCRIPT="${ENV_ALT_SCRIPT:-$ALT_SCRIPT}"                   # Set to yes to run the __alt_execute_script
 SERVICE_USER="${ENV_SERVICE_USER:-$SERVICE_USER}"             # execute command as another user
 SERVICE_UID="${ENV_SERVICE_UID:-$SERVICE_UID}"                # set the user id
 SERVICE_PORT="${ENV_SERVICE_PORT:-$SERVICE_PORT}"             # port which service is listening on
 EXEC_CMD_BIN="${ENV_EXEC_CMD_BIN:-$EXEC_CMD_BIN}"             # command to execute
 EXEC_CMD_ARGS="${ENV_EXEC_CMD_ARGS:-$EXEC_CMD_ARGS}"          # command arguments
 PRE_EXEC_MESSAGE="${ENV_PRE_EXEC_MESSAGE:-$PRE_EXEC_MESSAGE}" # Show message before execute
+SERVICE_EXIT_CODE=0                                           # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 printf '%s\n' "# - - - Attempting to start $EXEC_CMD_BIN - - - #"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -116,6 +120,7 @@ fi
 __update_conf_files
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Initialize ssl
+__update_ssl_conf
 __update_ssl_certs
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # run the pre execute commands
@@ -124,21 +129,20 @@ __pre_execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 WORKDIR="${WORKDIR:-}"
 if [ "$SERVICE_USER" = "root" ] || [ -z "$SERVICE_USER" ]; then
-  su_needed="false"
-  su_cmd_bin="eval"
-  su_cmd() { eval "$@" || return 1; }
+  su_cmd_bin=""
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P gosu)" ]; then
   su_cmd_bin="gosu $SERVICE_USER"
-  su_cmd() { gosu $SERVICE_USER "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P runuser)" ]; then
   su_cmd_bin="runuser -u $SERVICE_USER"
-  su_cmd() { runuser -u $SERVICE_USER "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P sudo)" ]; then
   su_cmd_bin="sudo -u $SERVICE_USER"
-  su_cmd() { sudo -u $SERVICE_USER "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P su)" ]; then
   su_cmd_bin="su -s /bin/sh - $SERVICE_USER"
-  su_cmd() { su -s /bin/sh - $SERVICE_USER -c "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin -c "$@" || return 1; }
 else
   echo "Can not switch to $SERVICE_USER"
   exit 10
@@ -147,18 +151,14 @@ if [ -n "$WORKDIR" ] && [ -n "$SERVICE_USER" ]; then
   echo "Fixing file permissions"
   su_cmd chown -Rf $SERVICE_USER $WORKDIR
 fi
-if [ "$su_needed" = "false" ]; then
+if __pgrep $EXEC_CMD_BIN && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ]; then
+  SERVICE_EXIT_CODE=1
+  echo "$EXEC_CMD_BIN" is already running
+else
   echo "Starting service: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
-else
-  echo "Starting service: $EXEC_CMD_BIN $EXEC_CMD_ARGS as $SERVICE_USER"
+  su_cmd touch /run/init.d/$EXEC_CMD_BIN.pid
+  __run_start_script "$@" |& tee -a "/tmp/entrypoint.log" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
+  [ "$?" -ne 0 ] && SERVICE_IS_RUNNING="false" && SERVICE_EXIT_CODE=10 && rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid"
 fi
-export SERVICE_IS_RUNNING="true"
-su_cmd "touch /run/$EXEC_CMD_BIN.init.pid"
-if [ "$ALT_SCRIPT" = "yes" ]; then
-  __alt_execute_script "$@"
-else
-  su_cmd "$EXEC_CMD_BIN $EXEC_CMD_ARGS" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
-fi
-[ "$?" -ne 0 ] && SERVICE_IS_RUNNING="false" && SERVICE_EXIT_CODE=10 && rm -Rf "/run/$EXEC_CMD_BIN.init.pid"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 exit $SERVICE_EXIT_CODE

@@ -17,8 +17,10 @@ __find_php_bin() { find -L '/usr'/*bin -maxdepth 4 -name 'php-fpm*' 2>/dev/null 
 __find_php_ini() { find -L '/etc' -maxdepth 4 -name 'php.ini' 2>/dev/null | head -n1 | sed 's|/php.ini||g' | grep '^' || echo ''; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __find_nginx_conf() { find -L '/etc' -maxdepth 4 -name 'nginx.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
+__find_lighttpd_conf() { find -L '/etc' -maxdepth 4 -type f -iname 'lighttpd.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
+__find_cherokee_conf() { find -L '/etc' -maxdepth 4 -type f -iname 'cherokee.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
+__find_caddy_conf() { find -L '/etc' -maxdepth 4 -type f -iname 'caddy.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
 __find_httpd_conf() { find -L '/etc' -maxdepth 4 -type f -iname 'httpd.conf' -o -iname 'apache2.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
-__find_lighttpd_conf() { find -L '/etc' -maxdepth 4 -type f -iname 'lighttpd.conf' -o -iname 'apache2.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __find_mysql_conf() { find -L '/etc' -maxdepth 4 -type f -name 'my.cnf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
 __find_pgsql_conf() { find -L '/var/lib' '/etc' -maxdepth 8 -type f -name 'postgresql.conf' 2>/dev/null | head -n1 | grep '^' || echo ''; }
@@ -93,32 +95,8 @@ __init_apache() {
   local etc_dir="/etc/${1:-apache2}"
   local conf_dir="/config/${1:-apache2}"
   local www_dir="${WWW_ROOT_DIR:-/data/htdocs/www}"
+  local apache_bin="$(type -P 'httpd' || type -P 'apache2')"
   #
-  apache_bin="$(type -P 'httpd' || type -P 'apache2')"
-  [ -e "$conf_dir" ] && [ -n "$apache_bin" ] || return 0
-  echo "Initializing apache web server in $conf_dir"
-  [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
-  [ -d "$etc_dir/conf.d" ] && rm -R "$etc_dir/conf.d"/*
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-  if [ "$SSL_ENABLED" = "true" ]; then
-    __file_copy "$conf_dir/httpd.ssl.conf" "$etc_dir/httpd.conf"
-    __file_copy "$conf_dir/vhosts.d/default.ssl.conf" "$etc_dir/vhosts.d/default.ssl.conf"
-  else
-    for ssl_conf in "$conf_dir/httpd.ssl.conf" "$etc_dir/vhosts.d/default.ssl.conf"; do
-      [ -n "$ssl_conf" ] && [ -f "$ssl_conf" ] && rm -Rf "$ssl_conf"
-    done
-  fi
-  [ -d "$www_dir" ] || mkdir -p "$www_dir"
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/httpd.conf"
-  __replace "SERVER_NAME" "${SERVER_NAME:-$HOSTNAME}" "$etc_dir/httpd.conf"
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/default.conf"
-  __replace "SERVER_ADMIN" "${SERVER_ADMIN:-root@$SERVER_NAME}" "$etc_dir/httpd.conf"
-  [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "apache" "$www_dir/www/index.php"
-  [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "apache" "$www_dir/www/index.html"
-  if [ -z "$PHP_BIN_DIR" ]; then
-    [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
-    [ -f "$etc_dir/conf.d/php-fpm.conf" ] && echo "# PHP support is not enabled" >"$etc_dir/conf.d/php-fpm.conf"
-  fi
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -126,50 +104,16 @@ __init_nginx() {
   local etc_dir="/etc/${1:-nginx}"
   local conf_dir="/config/${1:-nginx}"
   local www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
+  local nginx_bin="$(type -P 'nginx')"
   #
-  nginx_bin="$(type -P 'nginx')"
-  [ -e "$conf_dir" ] && [ -n "$nginx_bin" ] || return 0
-  echo "Initializing nginx web server in $conf_dir"
-  [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-  if [ "$SSL_ENABLED" = "true" ]; then
-    __file_copy "/config/nginx/nginx.ssl.conf" "/etc/nginx/nginx.ssl.conf"
-  else
-    [ -n "$ssl_conf" ] && [ -f "$ssl_conf" ] && rm -Rf "/etc/nginx/nginx.ssl.conf"
-  fi
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/nginx.conf"
-  [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "nginx" "$www_dir/www/index.php"
-  [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "nginx" "$www_dir/www/index.html"
-  if [ -z "$PHP_BIN_DIR" ]; then
-    [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
-    [ -f "$etc_dir/conf.d/php-fpm.conf" ] && echo "# PHP support is not enabled" >"$etc_dir/conf.d/php-fpm.conf"
-  fi
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_php() {
   local etc_dir="/etc/${1:-php}"
   local conf_dir="/config/${1:-php}"
-  php_bin="${PHP_BIN_DIR:-$(__find_php_bin)}"
+  local php_bin="${PHP_BIN_DIR:-$(__find_php_bin)}"
   #
-  echo "Initializing php in $conf_dir"
-  if [ -n "$PHP_VERSION" ] && [ ! -d "/etc/php" ]; then
-    [ -d "/etc/php" ] && rm -Rf "/etc/php"
-    if [ -d "/etc/php${PHP_VERSION}" ]; then
-      ln -sf "/etc/php${PHP_VERSION}" "/etc/php"
-    fi
-  fi
-  [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-  [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
-  [ "$etc_dir" = "/etc/php" ] || ln -sf "$etc_dir" "/etc/php"
-  [ -d "/config/php" ] && cp -Rf "/config/php/." "$PHP_INI_DIR"
-  [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "php" "$www_dir/www/index.php"
-  [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "php" "$www_dir/www/index.html"
-  if [ -z "$PHP_BIN_DIR" ]; then
-    [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
-  fi
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -181,27 +125,8 @@ __init_mysql() {
   local user_pass="${MARIADB_PASSWORD:-$MARIADB_ROOT_PASSWORD}"
   local user_db="${MARIADB_DATABASE}" user_name="${MARIADB_USER:-root}"
   local root_pass="$MARIADB_ROOT_PASSWORD"
-  [ -f "/config/secure/mysql_root_pass" ] && root_pass="$(<"/config/secure/mysql_root_pass")"
-  mysqld_bin="$(type -P 'mysqld')"
-  [ -e "$conf_dir" ] && [ -n "$mysqld_bin" ] || return 0
-  echo "Initializing mysql database server in $conf_dir"
-  rm -Rf "/etc/my.*" "/etc/mysql"
-  [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-  [ -d "$db_dir" ] || mysql_install_db --datadir=$db_dir --user=$db_user &>/dev/null
-  chown -Rf $db_user:$db_user $db_dir
-  if [ -n "$user_db" ]; then
-    mysql -u root <<MYSQL_SCRIPT
-CREATE DATABASE $user_db;
-CREATE USER '$user_name'@'%' IDENTIFIED BY '$pass';
-GRANT ALL PRIVILEGES ON $user_db.* TO '$user_db'@'%';
-FLUSH PRIVILEGES;
-MYSQL_SCRIPT
-  fi
-  [ -n "$user_name" ] && echo "mysql user name is: $user_name"
-  [ -n "$user_pass" ] && echo "mysql user pass is: $user_pass"
-  [ -n "$root_pass" ] && echo "mysql root pass is: $root_pass"
-  sleep 5
+  local mysqld_bin="$(type -P 'mysqld')"
+  #
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -209,25 +134,7 @@ __init_mongodb() {
   local home="${MONGODB_CONFIG_FILE:-$(__find_mongodb_conf)}"
   local user_pass="${MONGO_INITDB_ROOT_PASSWORD:-$_ROOT_PASSWORD}"
   local user_name="${INITDB_ROOT_USERNAME:-root}"
-  VCAP_APP_HOST="${VCAP_APP_HOST:-0.0.0.0}"
-  VCAP_APP_PORT="${VCAP_APP_PORT:-19054}"
-  SERVICE_PORT="${ME_CONFIG_MONGODB_SERVER:-$VCAP_APP_PORT}"
-  ME_CONFIG_EDITORTHEME="${ME_CONFIG_EDITORTHEME:-dracula}"
-  ME_CONFIG_MONGODB_URL="${ME_CONFIG_MONGODB_URL:-mongodb://127.0.0.1:27017}"
-  ME_CONFIG_MONGODB_ENABLE_ADMIN="${ME_CONFIG_MONGODB_ENABLE_ADMIN:-true}"
-  ME_CONFIG_BASICAUTH_USERNAME="${ME_CONFIG_BASICAUTH_USERNAME:-}"
-  ME_CONFIG_BASICAUTH_PASSWORD="${ME_CONFIG_BASICAUTH_PASSWORD:-}"
-  ME_CONFIG_BASICAUTH_USERNAME_FILE="${ME_CONFIG_BASICAUTH_USERNAME_FILE:-}"
-  ME_CONFIG_BASICAUTH_PASSWORD_FILE="${ME_CONFIG_BASICAUTH_PASSWORD_FILE:-}"
-  ME_CONFIG_MONGODB_ADMINUSERNAME_FILE="${ME_CONFIG_MONGODB_ADMINUSERNAME_FILE:-}"
-  ME_CONFIG_MONGODB_ADMINPASSWORD_FILE="${ME_CONFIG_MONGODB_ADMINPASSWORD_FILE:-}"
-  ME_CONFIG_MONGODB_AUTH_USERNAME_FILE="${ME_CONFIG_MONGODB_AUTH_USERNAME_FILE:-}"
-  ME_CONFIG_MONGODB_AUTH_PASSWORD_FILE="${ME_CONFIG_MONGODB_AUTH_PASSWORD_FILE:-}"
-  ME_CONFIG_MONGODB_CA_FILE="${ME_CONFIG_MONGODB_CA_FILE:-}"
-  VCAP_APP_HOST="${VCAP_APP_HOST:-0.0.0.0}"
-  VCAP_APP_PORT="${VCAP_APP_PORT:-19054}"
-  [ -n "$user_name" ] && echo "mongodb user name is: $user_name"
-  [ -n "$user_pass" ] && echo "mongodb user pass is: $user_pass"
+  #
   return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -235,54 +142,21 @@ __init_postgres() {
   local home="${PGSQL_CONFIG_FILE:-$(__find_pgsql_conf)}"
   local user_pass="${POSTGRES_PASSWORD:-$POSTGRES_ROOT_PASSWORD}"
   local user_name="${POSTGRES_USER:-root}"
-  [ -f "/config/secure/pgsql_root_pass" ] && root_pass="$(<"/config/secure/pgsql_root_pass")"
-
-  [ -n "$user_name" ] && echo "postgresql user name is: $user_name"
-  [ -n "$user_pass" ] && echo "postgresql user pass is: $user_pass"
+  #
   return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_couchdb() {
-  export PATH="/opt/couchdb/bin:$PATH"
   local home="${PGSQL_CONFIG_FILE:-$(__find_pgsql_conf)}"
   local user_pass="${COUCHDB_PASSWORD:-$SET_RANDOM_PASS}"
   local user_name="${COUCHDB_USER:-root}"
-
-  if [ "$DATA_DIR_INITIALIZED" = "false" ]; then
-    {
-      sleep 60
-      echo "Creating the default databases"
-      __curl -X PUT "http://127.0.0.1:5984/_users" &>/dev/null &&
-        echo "Created database _users"
-      __curl -X PUT "http://127.0.0.1:5984/_replicator" &>/dev/null &&
-        echo "Created database _replicator"
-      __curl -X PUT "http://127.0.0.1:5984/_global_changes" &>/dev/null &&
-        echo "Created database _global_changes"
-      echo ""
-    } >"/dev/stdout" &
-  fi
-  [ -d "/data/couchdb" ] || mv -f "/opt/couchdb/data" "/data/couchdb"
-  [ -d "/opt/couchdb/data" ] && rm -Rf "/opt/couchdb/data"
-  ln -sf "/data/couchdb" "/opt/couchdb/data" 2>/dev/null
-  touch "/opt/couchdb/etc/local.d/docker.ini" 2>/dev/null
-  chown -Rf couchdb:couchdb "/data/couchdb" "/opt/couchdb" 2>/dev/null
-
-  [ -n "$user_name" ] && echo "postgresql user name is: $user_name"
-  [ -n "$user_pass" ] && echo "postgresql user pass is: $user_pass"
-
+  #
   return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Show available init functions
 __init_help() {
   echo '
-__init_apache
-__init_nginx
-__init_php
-__init_mysql
-__init_mongodb
-__init_postgres
-__init_couchdb
 __certbot
 __update_ssl_certs
 __create_ssl_cert
@@ -343,17 +217,19 @@ __create_env() {
   local dir=""
   local envStatus=0
   local envFile=("${@:-}")
-  [ -f "/usr/local/share/template-files/config/env.sample" ] || return 0
+  local sample_file="/usr/local/etc/docker/env/default.sample"
+  [ -f "$sample_file" ] || return 0
   for create_env in "/usr/local/etc/docker/env/default.sh" "${envFile[@]}"; do
     dir="$(dirname "$create_env")"
     [ -d "$dir" ] || mkdir -p "$dir"
     if [ -n "$create_env" ] && [ ! -f "$create_env" ]; then
       cat <<EOF | tee "$create_env" &>/dev/null
-$(<"/usr/local/share/template-files/config/env.sample")
+$(<"$sample_file")
 EOF
     fi
     [ -f "$create_env" ] || envStatus=$((1 + envStatus))
   done
+  rm -f "$sample_file"
   return $envStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -389,7 +265,7 @@ __start_init_scripts() {
     for init in "$init_dir"/*.sh; do
       if [ -f "$init" ]; then
         name="$(basename "$init")"
-        (eval "$init" 2>/dev/stderr >/dev/stdout &)
+        (eval "$init" &) 2>/dev/stderr >/dev/stdout
         initStatus=$(($? + initStatus))
         sleep 30
       fi
@@ -426,20 +302,15 @@ FromLineOverride=yes
 #AuthPass=password
 
 EOF
-    # if [ -f "/config/ssmtp/ssmtp.conf" ] && [ ! -f "/run/init.d/ssmtp.pid" ]; then
-    # SERVICES_LIST+="ssmtp "
-    # cp -Rf "/config/ssmtp/." "/etc/ssmtp/"
-    # __exec_command ssmtp "/etc/ssmtp/ssmtp.conf" &
-    # [ $? -eq 0 ] && touch "/run/init.d/ssmtp.pid" || exitCode=1
-    # fi
+
     # postfix relay setup
   elif [ -d "/config/postfix" ] || [ -d "/etc/postfix" ]; then
     cat <<EOF | tee "/config/postfix/main.cf" &>/dev/null
 # postfix configuration.
 smtpd_banner = \$myhostname ESMTP CasjaysDev mail
 compatibility_level = 2
-alias_maps = hash:/etc/aliases
-alias_database = hash:/etc/aliases
+alias_maps = hash:/etc/postfix/aliases
+alias_database = hash:/etc/postfix/aliases
 mynetworks = /etc/postfix/mynetworks
 transport_maps = hash:/etc/postfix/transport
 virtual_alias_maps = hash:/etc/postfix/virtual
@@ -448,7 +319,6 @@ tls_random_source = dev:/dev/urandom
 smtp_use_tls = yes
 smtpd_use_tls = yes
 smtpd_tls_session_cache_database = btree:/etc/postfix/smtpd_scache
-smtpd_tls_dh1024_param_file = /etc/ssl/dhparam/1024.pem
 smtpd_tls_exclude_ciphers = aNULL, eNULL, EXPORT, DES, RC4, MD5, PSK, aECDH, EDH-DSS-DES-CBC3-SHA, EDH-RSA-DES-CBC3-SHA, KRB5-DES, CBC3-SHA
 smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination
 mydestination =
@@ -461,13 +331,13 @@ relayhost = [$relay_server]:$relay_port
 inet_protocols = ipv4
 
 EOF
-    touch "/etc/aliases" "/etc/postfix/mynetworks" "/etc/postfix/transport"
-    touch "/etc/postfix/mydomains.pcre" "/etc/postfix/mydomains" "/etc/postfix/virtual"
-    postmap "/etc/aliases" "/etc/postfix/mynetworks" "/etc/postfix/transport" &>/dev/null
-    postmap "/etc/postfix/mydomains.pcre" "/etc/postfix/mydomains" "/etc/postfix/virtual" &>/dev/null
+    touch "/config/postfix/aliases" "/config/postfix/mynetworks" "/config/postfix/transport"
+    touch "/config/postfix/mydomains.pcre" "/config/postfix/mydomains" "/config/postfix/virtual"
     if [ -f "/config/postfix/main.cf" ] && [ ! -f "/run/init.d/postfix.pid" ]; then
       SERVICES_LIST+="postfix "
       cp -Rf "/config/postfix/." "/etc/postfix/"
+      postmap "/etc/postfix/aliases" "/etc/postfix/mynetworks" "/etc/postfix/transport" &>/dev/null
+      postmap "/etc/postfix/mydomains.pcre" "/etc/postfix/mydomains" "/etc/postfix/virtual" &>/dev/null
       __exec_command postfix "/etc/postfix/main.cf" &
       [ $? -eq 0 ] && touch "/run/init.d/postfix.pid" || exitCode=1
     fi

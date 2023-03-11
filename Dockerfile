@@ -2,7 +2,7 @@
 ARG LICENSE="MIT"
 ARG IMAGE_NAME="bind"
 ARG PHP_SERVER="bind"
-ARG BUILD_DATE="Wed Mar  8 09:27:13 PM EST 2023"
+ARG BUILD_DATE="Fri Mar 10 06:32:13 PM EST 2023"
 ARG LANGUAGE="en_US.UTF-8"
 ARG TIMEZONE="America/New_York"
 ARG WWW_ROOT_DIR="/data/htdocs"
@@ -12,12 +12,12 @@ ARG DEFAULT_CONF_DIR="/usr/local/share/template-files/config"
 ARG DEFAULT_TEMPLATE_DIR="/usr/local/share/template-files/defaults"
 
 ARG IMAGE_REPO="alpine"
-ARG IMAGE_VERSION="edge"
-ARG CONTAINER_VERSION="latest"
+ARG IMAGE_VERSION="latest"
+ARG CONTAINER_VERSION="${IMAGE_VERSION}"
 
-ARG SERVICE_PORT="80"
-ARG EXPOSE_PORTS="80 53/tcp 53/udp"
-ARG PHP_VERSION="php8"
+ARG SERVICE_PORT=""
+ARG EXPOSE_PORTS=""
+ARG PHP_VERSION="system"
 ARG NODE_VERSION="system"
 ARG NODE_MANAGER="system"
 
@@ -48,7 +48,7 @@ ARG DISTRO_VERSION
 ARG PHP_VERSION
 
 ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini  \
-  bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}-fpm"
+  bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}-fpm "
 
 ENV ENV=~/.bashrc
 ENV SHELL="/bin/sh"
@@ -91,18 +91,22 @@ RUN touch "/etc/profile" "/root/.profile" ; \
   BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh"
 
 RUN set -ex ; \
-  echo
+  mkdir -p "${DEFAULT_DATA_DIR}/named" ; \
+  [ -d "/etc/named" ] ||mkdir -p "/etc/named" ; \
+  [ -d "/var/named" ] ||mkdir -p "/var/named" ; \
+  [ -d  "/run/named" ] || mkdir -p "/run/named" ; \
+  [ -d "/var/log/named"  ] || mkdir -p "/var/log/named" ; \
+  [ -d "/etc/named/keys"  ] || mkdir -p "/etc/named/keys" ; \
+  [ -d "/var/named/zones" ] || mkdir -p "/var/named/zones" ; \
+  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" ; \
+  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" ; \
+  ln -sf "/dev/stderr" "/var/log/named/debug.log" ; \
+  for f in /var/log/named/{default,security,xfer-in,xfer-out,update,notify,query}.log; do ln -sf /dev/stdout "$f";done ; \
+  chmod 777 "/var/log/named/" ; \
+  chown -Rf named:named /etc/named /var/named /var/log/named /run/named
 
 RUN echo 'Running cleanup' ; \
-  rm -Rf "/etc/rndc"* "/etc/named"* "/etc/bind/"* "/var/bind"/* ; \
-  [ -d "/etc/bind" ] && mv -f "/etc/bind" "/etc/named" ; \
-  [ -d "/var/bind" ] && mv -f "/var/bind" "/var/named" ; \
-  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "/etc/named/" ;\
-  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "/var/named/" ; \
-  mkdir -p "/var/named/zones" "/etc/named/keys" "/var/log/named" ; \
-  touch "/var/log/named/debug.log" ; \
-  for f in /tmp/named/{default,security,xfer-in,xfer-out,update,notify,query}.log; do ln -sf /dev/stdout "$f";done ; \
-  chown -Rf named:named /etc/named /var/named /var/log/named
+  rm -Rf "/etc/rndc"* "/etc/named"* "/etc/bind/"* "/var/bind"/*
 
 RUN rm -Rf "/config" "/data" ; \
   rm -rf /etc/systemd/system/*.wants/* ; \
@@ -176,7 +180,7 @@ COPY --from=build /. /
 
 VOLUME [ "/config","/data" ]
 
-EXPOSE ${ENV_PORTS}
+EXPOSE ${EXPOSE_PORTS}
 
 #CMD [ "" ]
 ENTRYPOINT [ "tini", "-p", "SIGTERM", "--", "/usr/local/bin/entrypoint.sh" ]

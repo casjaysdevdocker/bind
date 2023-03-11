@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
+[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 export PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # run trap command on exit
-trap -- 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "true" ] && [ -f "/run/$EXEC_CMD_BIN.init.pid" ] && rm -Rf "/run/$EXEC_CMD_BIN.init.pid";exit $retVal' SIGINT SIGTERM EXIT
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
-[ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
+trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "true" ] && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ] && rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid";exit $retVal' SIGINT SIGTERM EXIT
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import the functions file
 if [ -f "/usr/local/etc/docker/functions/entrypoint.sh" ]; then
@@ -19,44 +19,41 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
-
+__rndc_key() { cat /etc/named.conf | grep 'key "rndc-key" ' | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return; }
+__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g";s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                               # change to directory
-ALT_SCRIPT="no"                          # Set to yes to run the __alt_execute_script
-SERVICE_USER="root"                      # execute command as another user
-SERVICE_UID="0"                          # set the user id
-SERVICE_PORT="${PORT:-80}"               # port which service is listening on
-EXEC_CMD_BIN="nginx"                     # command to execute
-EXEC_CMD_ARGS="-c /etc/nginx/nginx.conf" # command arguments
-PRE_EXEC_MESSAGE=""                      # Show message before execute
-SERVICE_EXIT_CODE=0                      # default exit code
+WORKDIR=""                                  # set working directory
+SERVICE_UID="0"                             # set the user id
+SERVICE_USER="root"                         # execute command as another user
+SERVICE_PORT="53"                           # port which service is listening on
+EXEC_CMD_BIN="named"                        # command to execute
+EXEC_CMD_ARGS="-g -c /etc/named/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                         # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
-etc_dir="/etc/nginx"
-conf_dir="/config/nginx"
-www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
+etc_dir="/etc/named"
+var_dir="/var/named"
+conf_dir="/config/named"
+data_dir="/data/named"
+KEY_RNDC="${KEY_RNDC:-$(__tsig_key)}"
+KEY_DHCP="${KEY_DHCP:-$(__tsig_key)}"
+KEY_BACKUP="${KEY_BACKUP:-$(__tsig_key)}"
+KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  nginx_bin="$(type -P 'nginx')"
-  [ -n "$nginx_bin" ] || return 1
-  echo "Initializing nginx web server in $conf_dir"
-  [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-  if [ "$SSL_ENABLED" = "true" ]; then
-    __file_copy "$conf_dir/nginx.ssl.conf" "$etc_dir/nginx.conf"
-  else
-    [ -f "$etc_dir/nginx.ssl.conf" ] && rm -Rf "$etc_dir/nginx.ssl.conf"
-  fi
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/nginx.conf"
-  [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "nginx" "$www_dir/www/index.php"
-  [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "nginx" "$www_dir/www/index.html"
-  if [ -z "$PHP_BIN_DIR" ]; then
-    [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
-    [ -f "$etc_dir/conf.d/php-fpm.conf" ] && echo "# PHP support is not enabled" >"$etc_dir/conf.d/php-fpm.conf"
-  fi
+  mkdir -p "/config/named" "/data/named/zones" "/tmp/named" "/run/named"
+  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/named.conf
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir"/rndc.key
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' $etc_dir/certbot-update.conf &>/dev/null
+  [ -f "/config/named/named.conf" ] || cp -Rf "/etc/named/." "/config/named/"
+  __create_zone
+
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -68,12 +65,58 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
+  [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
+  for dns_file in /data/named/*; do
+    file_name="$(basename "$dns_file")"
+    domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
+    if [ -f "$dns_file" ]; then
+      cp -Rf "$dns_file" "$var_dir/zones/$file_name"
+      if ! grep -qs "$domain_name" "$etc_dir/named.conf" && [ -n "$domain_name" ]; then
+        cat <<EOF
+  #  ********** begin $domain_name **********
+  zone "$domain_name" {
+        type master;
+        file "$var_dir/zones/$file_name";
+        notify yes;
+        allow-update {key "certbot."; key "dhcp-key"; trusted;};
+        allow-transfer { any; key "backup-key"; };
+    };
+#  ********** end $domain_name **********
+
+EOF
+      fi
+    fi
+  done
+  if grep -s -q "named" "/etc/passwd"; then
+    chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/tmp/named"
+  fi
 
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# alternate script to start server
-__alt_execute_script() { eval $EXEC_CMD_BIN $EXEC_CMD_ARGS; }
+__create_zone() {
+  [ -f "/var/named/zones/$HOSTNAME.zone" ] && return
+  [ -d "$var_dir/zones" ] || mkdir -p "$var_dir/zones"
+  cat <<EOF | tee "/var/named/zones/$HOSTNAME.zone" &>/dev/null
+@                               1D IN SOA   $HOSTNAME. root.$HOSTNAME. (
+                                    42    ; serial (yyyymmdd##)
+                                    3H    ; refresh
+                                    15M   ; retry
+                                    1W    ; expiry
+                                    1D )  ; minimum ttl
+                                1D  IN  NS      $HOSTNAME.
+$HOSTNAME.                      1D  IN  A       $CONTAINER_IP4_ADDRESS
+
+EOF
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# script to start server
+__run_start_script() {
+  case "$1" in
+  check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
+  *) su_cmd $EXEC_CMD_BIN $EXEC_CMD_ARGS || return 10 ;;
+  esac
+}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # process check functions
 __pcheck() { [ -n "$(type -P pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null && return 0 || return 10; }
@@ -83,13 +126,13 @@ __pgrep() { __pcheck "${1:-EXEC_CMD_BIN}" || __ps aux 2>/dev/null | grep -Fw " $
 [ -f "/config/env/$EXEC_CMD_BIN.sh" ] && "/config/env/$EXEC_CMD_BIN.sh" # Import env file
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 WORKDIR="${ENV_WORKDIR:-$WORKDIR}"                            # change to directory
-ALT_SCRIPT="${ENV_ALT_SCRIPT:-$ALT_SCRIPT}"                   # Set to yes to run the __alt_execute_script
 SERVICE_USER="${ENV_SERVICE_USER:-$SERVICE_USER}"             # execute command as another user
 SERVICE_UID="${ENV_SERVICE_UID:-$SERVICE_UID}"                # set the user id
 SERVICE_PORT="${ENV_SERVICE_PORT:-$SERVICE_PORT}"             # port which service is listening on
 EXEC_CMD_BIN="${ENV_EXEC_CMD_BIN:-$EXEC_CMD_BIN}"             # command to execute
 EXEC_CMD_ARGS="${ENV_EXEC_CMD_ARGS:-$EXEC_CMD_ARGS}"          # command arguments
 PRE_EXEC_MESSAGE="${ENV_PRE_EXEC_MESSAGE:-$PRE_EXEC_MESSAGE}" # Show message before execute
+SERVICE_EXIT_CODE=0                                           # default exit code
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 printf '%s\n' "# - - - Attempting to start $EXEC_CMD_BIN - - - #"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -119,6 +162,7 @@ fi
 __update_conf_files
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Initialize ssl
+__update_ssl_conf
 __update_ssl_certs
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # run the pre execute commands
@@ -127,21 +171,20 @@ __pre_execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 WORKDIR="${WORKDIR:-}"
 if [ "$SERVICE_USER" = "root" ] || [ -z "$SERVICE_USER" ]; then
-  su_needed="false"
-  su_cmd_bin="eval"
-  su_cmd() { eval "$@" || return 1; }
+  su_cmd_bin=""
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P gosu)" ]; then
   su_cmd_bin="gosu $SERVICE_USER"
-  su_cmd() { gosu $SERVICE_USER "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P runuser)" ]; then
   su_cmd_bin="runuser -u $SERVICE_USER"
-  su_cmd() { runuser -u $SERVICE_USER "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P sudo)" ]; then
   su_cmd_bin="sudo -u $SERVICE_USER"
-  su_cmd() { sudo -u $SERVICE_USER "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin "$@" || return 1; }
 elif [ "$(builtin type -P su)" ]; then
   su_cmd_bin="su -s /bin/sh - $SERVICE_USER"
-  su_cmd() { su -s /bin/sh - $SERVICE_USER -c "$@" || return 1; }
+  su_cmd() { eval $su_cmd_bin -c "$@" || return 1; }
 else
   echo "Can not switch to $SERVICE_USER"
   exit 10
@@ -150,18 +193,14 @@ if [ -n "$WORKDIR" ] && [ -n "$SERVICE_USER" ]; then
   echo "Fixing file permissions"
   su_cmd chown -Rf $SERVICE_USER $WORKDIR
 fi
-if [ "$su_needed" = "false" ]; then
+if __pgrep $EXEC_CMD_BIN && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ]; then
+  SERVICE_EXIT_CODE=1
+  echo "$EXEC_CMD_BIN" is already running
+else
   echo "Starting service: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
-else
-  echo "Starting service: $EXEC_CMD_BIN $EXEC_CMD_ARGS as $SERVICE_USER"
+  su_cmd touch /run/init.d/$EXEC_CMD_BIN.pid
+  __run_start_script "$@" |& tee -a "/tmp/entrypoint.log" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
+  [ "$?" -ne 0 ] && SERVICE_IS_RUNNING="false" && SERVICE_EXIT_CODE=10 && rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid"
 fi
-export SERVICE_IS_RUNNING="true"
-su_cmd "touch /run/$EXEC_CMD_BIN.init.pid"
-if [ "$ALT_SCRIPT" = "yes" ]; then
-  __alt_execute_script "$@"
-else
-  su_cmd "$EXEC_CMD_BIN $EXEC_CMD_ARGS" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
-fi
-[ "$?" -ne 0 ] && SERVICE_IS_RUNNING="false" && SERVICE_EXIT_CODE=10 && rm -Rf "/run/$EXEC_CMD_BIN.init.pid"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 exit $SERVICE_EXIT_CODE

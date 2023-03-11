@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202303082127-git
+##@Version           :  202303102006-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.com
 # @@License          :  WTFPL
 # @@ReadME           :  entrypoint.sh --help
 # @@Copyright        :  Copyright: (c) 2023 Jason Hempstead, Casjays Developments
-# @@Created          :  Wednesday, Mar 08, 2023 21:27 EST
+# @@Created          :  Friday, Mar 10, 2023 20:06 EST
 # @@File             :  entrypoint.sh
 # @@Description      :  entrypoint point for bind
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
-# @@Other            :
-# @@Resource         :
+# @@Other            :  
+# @@Resource         :  
 # @@Terminal App     :  no
 # @@sudo/root        :  no
 # @@Template         :  other/docker-entrypoint
@@ -32,9 +32,8 @@ else
   exit 1
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# create the default env file and import it
-[ ! -f "/root/env.sh" ] && [ -f "/usr/local/etc/docker/env/default.sample" ] &&
-  mv -f "/usr/local/etc/docker/env/default.sample" "/root/env.sh"
+# Create the default env files
+__create_env "/config/env/default.sh" "/root/env.sh" &>/dev/null
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import variables from files
 for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.sh; do
@@ -45,45 +44,69 @@ done
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define script variables
-SERVICE_USER="root"                      # execute command as another user
-SERVICE_UID="0"                          # set the user id for creation of user
-SERVICE_PORT=""                          # specifiy port which service is listening on
-SERVICES_LIST="tini,php-fpm,named,nginx" # comma seperated list of processes for the healthcheck
+SERVICE_USER="root" # execute command as another user
+SERVICE_UID="0"     # set the user id for creation of user
+SERVICE_PORT=""     # specifiy port which service is listening on
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
-HEALTH_ENABLED="${HEALTH_ENABLED:-}"     #
-SERVICES_LIST="${SERVICES_LIST:-}"       #
-WEB_SERVER_PORTS="${WEB_SERVER_PORTS:-}" # ports : 80 443
-HEALTH_ENDPOINTS="${HEALTH_ENDPOINTS:-}" # url endpoints: http://localhost/test
+HEALTH_ENABLED="yes"                     # enable healthcheck [yes/no]
+SERVICES_LIST="tini"                     # comma seperated list of processes for the healthcheck
+WEB_SERVER_PORTS="${WEB_SERVER_PORTS:-}" # ports : 80,443
+HEALTH_ENDPOINTS="${HEALTH_ENDPOINTS:-}" # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional
-PHP_INI_DIR="$(__find_php_ini)"
-PHP_BIN_DIR="$(__find_php_bin)"
-HTTPD_CONFIG_FILE="$(__find_httpd_conf)"
-NGINX_CONFIG_FILE="$(__find_nginx_conf)"
-MYSQL_CONFIG_FILE="$(__find_mysql_conf)"
-PGSQL_CONFIG_FILE="$(__find_pgsql_conf)"
+PHP_INI_DIR="${PHP_INI_DIR:-$(__find_php_ini)}"
+PHP_BIN_DIR="${PHP_BIN_DIR:-$(__find_php_bin)}"
+HTTPD_CONFIG_FILE="${HTTPD_CONFIG_FILE:-$(__find_httpd_conf)}"
+NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-$(__find_nginx_conf)}"
+MYSQL_CONFIG_FILE="${MYSQL_CONFIG_FILE:-$(__find_mysql_conf)}"
+PGSQL_CONFIG_FILE="${PGSQL_CONFIG_FILE:-$(__find_pgsql_conf)}"
+MONGODB_CONFIG_FILE="${MONGODB_CONFIG_FILE:-$(__find_mongodb_conf)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Overwrite variables
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Last thing to run before options
 __run_pre() {
-
+  if [ "$ENTRYPOINT_FIRST_RUN" = "false" ]; then # Run on initial creation
+    true
+  fi
+  if [ "$CONFIG_DIR_INITIALIZED" = "false" ]; then # Initial config
+    true
+  fi
+  if [ "$DATA_DIR_INITIALIZED" = "false" ]; then
+    true
+  fi
+  # End Initial config
+  if [ "$START_SERVICES" = "yes" ]; then # only run on start
+    true
+  fi # end run on start
+  # Run everytime container starts
+  # __certbot
+  # __create_ssl_cert
+  # __update_ssl_certs
+  # end
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __run_message() {
-  if [ "$ENTRYPOINT_MESSAGE" = "yes" ]; then
-    echo "Container ip address is: $CONTAINER_IP4_ADDRESS"
 
-  fi
+  return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# export variables
+# rewrite variables
+ENV_PORTS="${ENV_PORTS//,/ }"
 ENV_PORTS="${ENV_PORTS//\/*/}"
-ENV_PORTS="$(echo "$ENV_PORTS" | tr ' ' '\n' | sort -u)"
-export NGINX_CONFIG_FILE MYSQL_CONFIG_FILE PGSQL_CONFIG_FILE ENV_PORTS PHP_INI_DIR PHP_BIN_DIR HTTPD_CONFIG_FILE
+WEB_SERVER_PORTS="${SERVICE_PORT//\/*/}"
+HEALTH_ENDPOINTS="${HEALTH_ENDPOINTS//,/ }"
+WEB_SERVER_PORTS="${WEB_SERVER_PORTS//\/*/}"
+WEB_SERVER_PORTS="${SERVICE_PORT//,/ } ${WEB_SERVER_PORTS//,/ }"
+ENV_PORTS="$(echo "$ENV_PORTS" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ' | grep '^' || false)"
+WEB_SERVER_PORTS="$(echo "$WEB_SERVER_PORTS" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ' | grep '^' || false)"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# export variables
+export NGINX_CONFIG_FILE MYSQL_CONFIG_FILE PGSQL_CONFIG_FILE
+export ENV_PORTS PHP_INI_DIR PHP_BIN_DIR HTTPD_CONFIG_FILE
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default directories
 export BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
@@ -93,26 +116,26 @@ export DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/dat
 export DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
 export DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Create the backup dir
-[ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR"
+# Show start message
+if [ "$CONFIG_DIR_INITIALIZED" = "false" ] || [ "$DATA_DIR_INITIALIZED" = "false" ]; then
+  [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Executing entrypoint script for bind"
+fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # create required directories
 mkdir -p "/run" && chmod -f 777 "/run"
 mkdir -p "/tmp" && chmod -f 777 "/tmp"
 mkdir -p "/root" && chmod -f 700 "/root"
 mkdir -p "/run/init.d" && chmod -f 777 "/run/init.d"
-mkdir -p "/config/secure" && chmod 777 "/config/secure"
+mkdir -p "/config/secure" && chmod -f 777 "/config/secure"
 [ -f "/config/.enable_ssh" ] && export SSL_ENABLED="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Create the default env files
-__create_env "/config/env/default.sh" "/root/env.sh" &>/dev/null
+# create required files
+touch "/tmp/entrypoint.log"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Create the backup dir
+[ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 [ "$WEB_SERVER_PORT" = "443" ] && SSL_ENABLED="true"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Show start message
-if [ "$CONFIG_DIR_INITIALIZED" = "false" ] || [ "$DATA_DIR_INITIALIZED" = "false" ]; then
-  [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Executing entrypoint script for bind"
-fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set timezone
 [ -n "$TZ" ] && [ -w "/etc/timezone" ] && echo "$TZ" >"/etc/timezone"
@@ -266,11 +289,7 @@ fi
 # setup the smtp server
 __setup_mta
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-__update_ssl_certs
 __run_pre
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Show message
-__run_message
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if [ -f "$ENTRYPOINT_CONFIG_INIT_FILE" ]; then
   ENTRYPOINT_FIRST_RUN="no"
@@ -296,7 +315,9 @@ if [ -f "$ENTRYPOINT_PID_FILE" ]; then
   ENTRYPOINT_MESSAGE="no"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-export DATA_DIR_INITIALIZED CONFIG_DIR_INITIALIZED START_SERVICES ENTRYPOINT_MESSAGE
+export DATA_DIR_INITIALIZED CONFIG_DIR_INITIALIZED START_SERVICES ENTRYPOINT_MESSAGE ENTRYPOINT_FIRST_RUN
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Container ip address is: $CONTAINER_IP4_ADDRESS"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Show configured listing processes
 if [ -n "$ENV_PORTS" ]; then
@@ -305,7 +326,9 @@ if [ -n "$ENV_PORTS" ]; then
   printf '%s\n' "The following ports are open: $show_port"
   unset port show_port
 fi
-
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Show message
+__run_message
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Just start services
 START_SERVICES="${START_SERVICES:-SYSTEM_INIT}"
@@ -341,6 +364,7 @@ healthcheck) # Docker healthcheck
   healthEndPoints="${HEALTH_ENDPOINTS:-}"
   healthMessage="Everything seems to be running"
   services="${services//,/ }"
+  [ "$healthEnabled" = "yes" ] || exit 0
   for proc in $services; do
     if [ -n "$proc" ]; then
       if ! __pgrep "$proc"; then
@@ -359,9 +383,6 @@ healthcheck) # Docker healthcheck
       __curl "$endpoint" || healthStatus=$((healthStatus + 1))
     fi
   done
-  if [ -n "$healthEnabled" ]; then
-    __curl "${HEALTH_URL:-http://localhost:$port/server-health}" || healthStatus=$((healthStatus + 1))
-  fi
   [ "$healthStatus" -eq 0 ] || healthMessage="Errors reported see: docker logs --follow $CONTAINER_NAME"
   [ -n "$healthMessage" ] && echo "$healthMessage"
   exit $healthStatus
@@ -408,12 +429,6 @@ certbot) # manage ssl certificate
   exit $?
   ;;
 
-init) # show/execute init functions
-  shift 1
-  __init_${1:-help}
-  exit $?
-  ;;
-
 start) # show/start an init script
   shift 1
   PATH="/usr/local/etc/docker/init.d:$PATH"
@@ -421,16 +436,14 @@ start) # show/start an init script
     scripts="$(ls -A "/usr/local/etc/docker/init.d")"
     [ -n "$scripts" ] && echo "$scripts" || echo "No scripts found in: /usr/local/etc/docker/init.d"
   elif [ -f "/usr/local/etc/docker/init.d/$1" ]; then
-    exec "/usr/local/etc/docker/init.d/$1"
+    eval "/usr/local/etc/docker/init.d/$1"
+    wait -f $!
   elif [ "$1" = "all" ]; then
-    eval "$0"
+    shift $#
+    echo "$$" >"/run/init.d/entrypoint.pid"
+    __start_init_scripts "/usr/local/etc/docker/init.d"
+    exec "${SHELL:-bash}"
   fi
-  exit $?
-  ;;
-
-exec) # execute commands
-  shift 1
-  __exec_command "${@:-/bin/bash}"
   exit $?
   ;;
 
@@ -438,7 +451,7 @@ exec) # execute commands
   if [ "$START_SERVICES" = "yes" ] && [ ! -f "/run/init.d/entrypoint.pid" ]; then
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d" && sleep 3 || sleep 1
-    [ -n "$1" ] && exec "$*" || exec "${SHELL:-bash -l}"
+    [ -n "$1" ] && exec "$*" || exec "${SHELL:-bash}"
     exit 0
   else
     __exec_command "$@"
