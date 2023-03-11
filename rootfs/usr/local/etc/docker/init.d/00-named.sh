@@ -84,6 +84,7 @@ EOF
 #  ********** end $domain_name **********
 
 EOF
+        grep -qs "$domain_name" "$etc_dir/named.conf" && echo "Added $domain_name to $etc_dir/named.conf"
       fi
     fi
   done
