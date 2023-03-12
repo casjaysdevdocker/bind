@@ -465,7 +465,7 @@ start) # show/start an init script
       echo "# - - - initializing completed - - - #"
       wait -f $wait_pid
     else
-      while :; do [ -z "$(pgrep named)" ] && echo "named dns failed to start" && sleep 1800 || sleep 3600; done
+      while :; do [ -z "$(pgrep named)" ] && sleep 1800 || sleep 3600; done
     fi
   else
     __exec_command "${@:-bash}"
