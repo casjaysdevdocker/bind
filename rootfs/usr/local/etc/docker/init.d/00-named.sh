@@ -97,7 +97,10 @@ EOF
       fi
     fi
   done
-  named-checkconf -z /etc/bind/named.conf &>/dev/null && echo "named-checkconf has succeeded"
+  named-checkconf -z /etc/bind/named.conf &>/dev/null && echo "named-checkconf has succeeded" || {
+    echo "named-checkconf has failed:"
+    named-checkconf -z /etc/bind/named.conf
+  }
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
