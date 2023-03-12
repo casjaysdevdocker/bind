@@ -459,8 +459,14 @@ start) # show/start an init script
     echo "# - - - initializing services - - - #"
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    echo "# - - - initializing completed - - - #"
-    tail -f "/var/log"/* "/data/log"/*/*
+    sleep 10
+    wait_pid="$(pgrep named)"
+    if [ -n "$wait_pid" ]; then
+      echo "# - - - initializing completed - - - #"
+      wait -f $wait_pid
+    else
+      while :; do [ -z "$(pgrep named)" ] && echo "named dns failed to start" && sleep 1800 || sleep 3600; done
+    fi
   else
     __exec_command "${@:-bash}"
     exit $?
