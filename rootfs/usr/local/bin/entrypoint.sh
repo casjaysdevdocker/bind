@@ -459,8 +459,8 @@ start) # show/start an init script
     echo # - - - initializing services - - - #
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    echo # - - - initializing has completed - - - #
-    __exec_command tail -f "/var/log/entrypoint.log"
+    echo # - - - initializing completed - - - #
+    __exec_command tail -f "/var/log/entrypoint.log" "/data/log"/*/*
   else
     __exec_command "${@:-bash}"
     exit $?

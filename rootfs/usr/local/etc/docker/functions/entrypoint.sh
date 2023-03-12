@@ -269,7 +269,7 @@ __start_init_scripts() {
     for init in "$init_dir"/*.sh; do
       if [ -f "$init" ]; then
         name="$(basename "$init")"
-        (eval "$init" &)
+        (eval "$init" 2>/dev/sdterr >/dev/stdout &)
         initStatus=$(($? + initStatus))
         sleep 10
         echo ""
