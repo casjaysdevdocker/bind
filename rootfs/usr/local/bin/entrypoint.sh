@@ -459,7 +459,7 @@ start) # show/start an init script
     echo "# - - - initializing services - - - #"
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    while :; do [ -z "$(pgrep named)" ] && named -f -c /etc/bind/named.conf && sleep 600 || sleep 3600; done
+    tail -f "/var/log/endpoint.log" "/data/log"/*/*
   else
     __exec_command "${@:-bash}"
     exit $?
