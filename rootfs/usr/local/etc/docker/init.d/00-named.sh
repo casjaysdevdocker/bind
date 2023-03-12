@@ -43,6 +43,7 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
+  [ -z "$(type -p 'named' 2>/dev/null)" ] && echo "the program named is not installed" && exit 1
   local zone_files="" serial=""
   serial="$(date +'%Y%m%d%S')"
   #
@@ -116,7 +117,7 @@ __pre_execute() {
   chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/log/named" && echo "changed ownership to named"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
-  chmod -Rf 666 "$data_dir/log"
+  chmod -Rf 666 "$data_dir/log/named"/*
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

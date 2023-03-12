@@ -31,6 +31,7 @@ EXEC_CMD_ARGS="-c /etc/nginx/nginx.conf" # command arguments
 PRE_EXEC_MESSAGE=""                      # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
+data_dir="/data"
 etc_dir="/etc/nginx"
 conf_dir="/config/nginx"
 www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
@@ -38,8 +39,10 @@ nginx_bin="$(type -P 'nginx')"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  [ -e "$etc_dir" ] && [ -n "$nginx_bin" ] || return 1
+  [ -z "$(type -p 'nginx' 2>/dev/null)" ] && echo "The program nginx is not installed" && exit 1
   echo "Initializing nginx web server in $conf_dir"
+  mkdir -p "$data_dir/log/nginx"
+  chmod -Rf 777 "$data_dir/log/nginx"
   [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
   [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
   if [ "$SSL_ENABLED" = "true" ]; then
@@ -62,9 +65,7 @@ __update_conf_files() {
     [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
     [ -f "$etc_dir/conf.d/php-fpm.conf" ] && echo "# PHP support is not enabled" >"$etc_dir/conf.d/php-fpm.conf"
   fi
-  if grep -s -q "nginx:" "/etc/passwd"; then
-    chown -Rf nginx:nginx "$etc_dir" "$www_dir"
-  fi
+
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -78,6 +79,7 @@ __update_ssl_conf() {
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
   [ -d "/run/init.d" ] || { mkdir -p "/run/init.d" && chmod 777 "/run/init.d"; }
+  grep -s -q "nginx:" "/etc/passwd" && chown -Rf nginx:nginx "$etc_dir" "$www_dir" "$data_dir/log/nginx"
 
   return 0
 }

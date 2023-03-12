@@ -31,6 +31,7 @@ EXEC_CMD_ARGS="--allow-to-run-as-root --nodaemonize --fpm-config /etc/php/php-fp
 PRE_EXEC_MESSAGE=""                                                                     # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
+data_dir="/data"
 conf_dir="/config/php"
 etc_dir="${PHP_INI_DIR:-$(__find_php_ini)}"
 php_bin="${PHP_BIN_DIR:-$(__find_php_bin)}"
@@ -38,7 +39,9 @@ php_bin="${PHP_BIN_DIR:-$(__find_php_bin)}"
 # use this function to update config files - IE: change port
 __update_conf_files() {
   echo "Initializing php in $conf_dir"
-  if [ -n "$php_bin" ] && [ -d "$etc_dir" ]; then
+  if [ -n "$php_bin" ]; then
+    mkdir -p "$data_dir/log/php"
+    chmod -Rf 777 "$data_dir/log/php" /var/tmp
     if [ "$etc_dir" != "/etc/php" ]; then
       [ -d "/etc/php" ] && rm -Rf "/etc/php"
       ln -sf "$etc_dir" "/etc/php"
@@ -58,6 +61,7 @@ __update_conf_files() {
   else
     echo "php can not be found"
     [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
+    exit 1
   fi
   return 0
 }
@@ -71,6 +75,7 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
+  grep -s -q "$SERVICE_USER:" "/etc/passwd" && chown -Rf $SERVICE_USER:$SERVICE_USER "$etc_dir"
 
   return 0
 }
