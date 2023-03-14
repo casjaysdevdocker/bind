@@ -19,17 +19,16 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
-__rndc_key() { grep -s 'key "rndc-key" ' /etc/named.conf | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
-__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables
-WORKDIR=""                                 # set working directory
-SERVICE_UID="0"                            # set the user id
-SERVICE_USER="root"                        # execute command as another user
-SERVICE_PORT="53"                          # port which service is listening on
-EXEC_CMD_BIN="named"                       # command to execute
-EXEC_CMD_ARGS="-f -c /etc/bind/named.conf" # command arguments
-PRE_EXEC_MESSAGE=""                        # Show message before execute
+WORKDIR=""                                  # set working directory
+SERVICE_UID="0"                             # set the user id
+SERVICE_USER="root"                         # execute command as another user
+SERVICE_PORT="53"                           # port which service is listening on
+EXEC_CMD_BIN="named"                        # command to execute
+EXEC_CMD_ARGS="-f -c /etc/named/named.conf" # command arguments
+PRE_EXEC_MESSAGE=""                         # Show message before execute
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Other variables that are needed
 etc_dir="/etc/bind"
@@ -47,18 +46,23 @@ __update_conf_files() {
   local zone_files="" serial=""
   serial="$(date +'%Y%m%d%S')"
   #
+  if [ -d "$conf_dir" ]; then
+    cp -Rf "$conf_dir/." "$etc_dir/"
+  else
+    mkdir -p "$conf_dir"
+    cp -Rf "$etc_dir/" "$conf_dir/"
+  fi
+  #
   mkdir -p "/run/named" "/data/log/named"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
-  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
+  #
   [ -f "$etc_dir/custom.conf" ] && mv -f "$etc_dir/custom.conf" "$etc_dir/named.conf"
   #
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"                  #&>/dev/null
-  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"                #&>/dev/null
-  sed -i 's|REPLACE_HOSTNAME|'$HOSTNAME'|g' "$etc_dir/named.conf"                #&>/dev/null
-  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir/named.conf"                #&>/dev/null
-  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir/named.conf"            #&>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf"          #&>/dev/null
-  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/certbot-update.conf" #&>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"         #&>/dev/null
+  sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"       #&>/dev/null
+  sed -i 's|REPLACE_KEY_DHCP|'$KEY_DHCP'|g' "$etc_dir/named.conf"       #&>/dev/null
+  sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir/named.conf"   #&>/dev/null
+  sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf" #&>/dev/null
   #
   chmod -Rf 777 "/data/log"
   for logfile in default debug security; do
@@ -82,7 +86,7 @@ EOF
     domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
     if [ -f "$dns_file" ]; then
       cp -Rf "$dns_file" "$var_dir/zones/$file_name"
-      if ! grep -qs "$domain_name" "$etc_dir/named.conf" && [ -n "$domain_name" ]; then
+      if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$etc_dir/named.conf"; then
         cat <<EOF >>"$etc_dir/named.conf"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
@@ -103,6 +107,7 @@ EOF
     echo "named-checkconf has failed:"
     named-checkconf -z /etc/bind/named.conf
   }
+
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -114,11 +119,11 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
-  [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
   chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/log/named" && echo "changed ownership to named"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
   chmod -Rf 666 "$data_dir/log/named"/*
+
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -126,13 +131,13 @@ __pre_execute() {
 __run_start_script() {
   local workdir="${WORKDIR:-$HOME}"
   local cmd="$EXEC_CMD_BIN $EXEC_CMD_ARGS"
-  local user="${SERVICE_USER//root/daemon}"
+  local user="${SERVICE_USER:-root}"
   local lc_type="${LC_ALL:-${LC_CTYPE:-$LANG}}"
   local home="${workdir//\/root/\/home\/docker}"
   local path="/usr/local/bin:/usr/bin:/bin:/usr/sbin"
   case "$1" in
   check) shift 1 && __pgrep $EXEC_CMD_BIN || return 5 ;;
-  *) su_cmd env -i PWD="$home" HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="root" sh -c "$cmd" || return 10 ;;
+  *) su_cmd env -i PWD="$home" HOME="$home" LC_CTYPE="$lc_type" PATH="$path" USER="$user" sh -c "$cmd" || return 10 ;;
   esac
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -176,12 +181,12 @@ fi
 # Change to working directory
 [ -n "$WORKDIR" ] && mkdir -p "$WORKDIR" && __cd "$WORKDIR" && echo "Changed to $PWD"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Updating config files
-__update_conf_files
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Initialize ssl
 __update_ssl_conf
 __update_ssl_certs
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Updating config files
+__update_conf_files
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # run the pre execute commands
 [ -n "$PRE_EXEC_MESSAGE" ] && echo "$PRE_EXEC_MESSAGE"
@@ -190,21 +195,21 @@ __pre_execute
 WORKDIR="${WORKDIR:-}"
 if [ "$SERVICE_USER" = "root" ] || [ -z "$SERVICE_USER" ]; then
   su_cmd() { eval "$@" || return 1; }
-elif [ "$(builtin type -P 'gosu')" ]; then
+elif [ "$(builtin type -P gosu)" ]; then
   su_cmd() { gosu $SERVICE_USER "$@" || return 1; }
-elif [ "$(builtin type -P 'runuser')" ]; then
+elif [ "$(builtin type -P runuser)" ]; then
   su_cmd() { runuser -u $SERVICE_USER "$@" || return 1; }
-elif [ "$(builtin type -P 'sudo')" ]; then
+elif [ "$(builtin type -P sudo)" ]; then
   su_cmd() { sudo -u $SERVICE_USER "$@" || return 1; }
-elif [ "$(builtin type -P 'su')" ]; then
+elif [ "$(builtin type -P su)" ]; then
   su_cmd() { su -s /bin/sh - $SERVICE_USER -c "$@" || return 1; }
 else
-  echo "Can not switch to $SERVICE_USER"
-  exit 10
+  echo "Can not switch to $SERVICE_USER: attempting to run as root"
+  su_cmd() { eval "$@" || return 1; }
 fi
-if [ -n "$WORKDIR" ] && [ -n "$SERVICE_USER" ]; then
+if [ -n "$WORKDIR" ] && [ "${SERVICE_USER:-$USER}" != "root" ]; then
   echo "Fixing file permissions"
-  su_cmd chown -Rf $SERVICE_USER $WORKDIR
+  su_cmd chown -Rf $SERVICE_USER $WORKDIR $etc_dir $var_dir $log_dir
 fi
 if __pgrep $EXEC_CMD_BIN && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ]; then
   SERVICE_EXIT_CODE=1
@@ -212,8 +217,12 @@ if __pgrep $EXEC_CMD_BIN && [ -f "/run/init.d/$EXEC_CMD_BIN.pid" ]; then
 else
   echo "Starting service: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
   su_cmd touch /run/init.d/$EXEC_CMD_BIN.pid
-  __run_start_script "$@" |& tee -a "/var/log/entrypoint.log" || echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
-  [ "$?" -ne 0 ] && SERVICE_IS_RUNNING="false" && SERVICE_EXIT_CODE=10 && rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid"
+  __run_start_script "$@" |& tee -a "/tmp/entrypoint.log"
+  if [ "$?" -ne 0 ]; then
+    echo "Failed to execute: $EXEC_CMD_BIN $EXEC_CMD_ARGS"
+    SERVICE_EXIT_CODE=10 SERVICE_IS_RUNNING="false"
+    su_cmd rm -Rf "/run/init.d/$EXEC_CMD_BIN.pid"
+  fi
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 exit $SERVICE_EXIT_CODE
