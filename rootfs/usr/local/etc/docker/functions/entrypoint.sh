@@ -4,12 +4,13 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __rm() { [ -f "$1" ] && rm -Rf "${1:?}"; }
 __cd() { [ -d "$1" ] && builtin cd "$1" || return 1; }
-__ps() { [ -f "$(type -P ps)" ] && ps "$@" || return 10; }
 __netstat() { [ -f "$(type -P netstat)" ] && netstat "$@" || return 10; }
 __curl() { curl -q -sfI --max-time 3 -k -o /dev/null "$@" &>/dev/null || return 10; }
 __find() { find "$1" -mindepth 1 -type ${2:-f,d} 2>/dev/null | grep '^' || return 10; }
-__pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null || return 10; }
-__pgrep() { __pcheck "${1:-GEN_SCRIPT_REPLACE_APPNAME}" || __ps aux 2>/dev/null | grep -Fw " ${1:-$GEN_SCRIPT_REPLACE_APPNAME}" | grep -qv ' grep' || return 10; }
+__no_exit() { exec /bin/sh -c "trap : TERM INT; (while true; do sleep 1000; done) & wait"; }
+__pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -o "$1" &>/dev/null || return 10; }
+__ps() { [ -f "$(type -P ps)" ] && ps "$@" 2>/dev/null | grep -Fw " ${1:-$GEN_SCRIPT_REPLACE_APPNAME}" || return 10; }
+__pgrep() { __pcheck "${1:-GEN_SCRIPT_REPLACE_APPNAME}" || __ps "${1:-$GEN_SCRIPT_REPLACE_APPNAME}" | grep -qv ' grep' || return 10; }
 __get_ip6() { ip a 2>/dev/null | grep -w 'inet6' | awk '{print $2}' | grep -vE '^::1|^fe' | sed 's|/.*||g' | head -n1 | grep '^' || echo ''; }
 __get_ip4() { ip a 2>/dev/null | grep -w 'inet' | awk '{print $2}' | grep -vE '^127.0.0' | sed 's|/.*||g' | head -n1 | grep '^' || echo '127.0.0.1'; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -39,26 +40,39 @@ __update_ssl_certs() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __certbot() {
-  if [ -f "/config/bin/certbot.sh" ]; then
-    "/config/bin/certbot.sh"
+  local statusCode=0
+  [ -n "$(type -P 'certbot')" ] || return 1
+  if [ -f "/config/certbot/env.sh" ]; then
+    . "/config/certbot/env.sh"
+  fi
+  if [ -f "/config/certbot/setup.sh" ]; then
+    eval "/config/certbot/setup.sh"
+    statusCode=$?
   elif [ -f "/etc/named/certbot.sh" ]; then
-    "/etc/named/certbot.sh"
+    eval "/etc/named/certbot.sh"
+    statusCode=$?
+  elif [ -f "/config/named/certbot-update.conf" ]; then
+    if certbot renew -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/named/certbot-update.conf; then
+      certbot renew -n --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/named/certbot-update.conf
+    fi
+    statusCode=$?
   else
     local options="${1:-create}" && shift 1
     domain_list="$DOMAINNAME www.$DOMAINNAME mail.$DOMAINNAME $CERTBOT_DOMAINS"
     [ -f "/config/env/ssl.sh" ] && . "/config/env/ssl.sh"
-    [ "$SSL_CERT_BOT" = "true" ] && [ -f "$(type -P certbot)" ] || { export SSL_CERT_BOT="" && return 10; }
+    [ "$SSL_CERT_BOT" = "true" ] || { export SSL_CERT_BOT="" && return 10; }
     [ -n "$CERT_BOT_MAIL" ] || echo "The variable CERT_BOT_MAIL is not set" && return 1
     [ -n "$DOMAINNAME" ] || echo "The variable DOMAINNAME is not set" && return 1
     for domain in $$CERTBOT_DOMAINS; do
       [ -n "$domain" ] && ADD_CERTBOT_DOMAINS="-d $domain "
     done
     certbot $options --agree-tos -m $CERT_BOT_MAIL certonly --webroot \
-      -w "${WWW_ROOT_DIR:-/data/htdocs/www}" \
-      $ADD_CERTBOT_DOMAINS --put-all-related-files-into "$SSL_DIR" \
-      -key-path "$SSL_KEY" -fullchain-path "$SSL_CERT" && __update_ssl_certs
+      -w "${WWW_ROOT_DIR:-/data/htdocs/www}" $ADD_CERTBOT_DOMAINS \
+      --put-all-related-files-into "$SSL_DIR" -key-path "$SSL_KEY" -fullchain-path "$SSL_CERT"
+    statusCode=$?
   fi
-  return $?
+  [ $statusCode -eq 0 ] && __update_ssl_certs
+  return $statusCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __create_ssl_cert() {
@@ -175,13 +189,20 @@ __run_once() {
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# run program ever n minutes
 __cron() {
-  local interval="$1" && shift 1
-  local command="$*"
+  trap '[ -f "/run/cron/$cmd" ] && rm -Rf "/run/cron/$cmd";exit 0' SIGINT ERR EXIT
+  test -n "$1" && test -z "${1//[0-9]/}" && interval=$(($1 * 60)) && shift 1 || interval="5"
+  [ $# -eq 0 ] && echo "Usage: cron [interval] [command]" && exit 1
+  command="$*"
+  cmd="$(echo "$command" | awk -F' ' '{print $1}')"
+  [ -d "/run/cron" ] || mkdir -p "/run/cron"
+  echo "$command" >"/run/cron/$cmd"
   while :; do
     eval "$command"
     sleep $interval
-  done
+    [ -f "/run/cron/$cmd" ] || break
+  done |& tee /var/log/entrypoint.log
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __replace() {
@@ -269,14 +290,13 @@ __start_init_scripts() {
     for init in "$init_dir"/*.sh; do
       if [ -f "$init" ]; then
         name="$(basename "$init")"
-        (eval "$init" 2>/dev/sdterr >/dev/stdout &)
+        (eval "$init" &)
         initStatus=$(($? + initStatus))
         sleep 10
         echo ""
       fi
     done
   fi
-  return $initStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __setup_mta() {
