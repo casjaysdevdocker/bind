@@ -2,7 +2,7 @@
 ARG LICENSE="MIT"
 ARG IMAGE_NAME="bind"
 ARG PHP_SERVER="bind"
-ARG BUILD_DATE="Fri Mar 10 06:32:13 PM EST 2023"
+ARG BUILD_DATE="Tue Mar 14 09:10:57 AM EDT 2023"
 ARG LANGUAGE="en_US.UTF-8"
 ARG TIMEZONE="America/New_York"
 ARG WWW_ROOT_DIR="/data/htdocs"
@@ -16,10 +16,8 @@ ARG IMAGE_VERSION="latest"
 ARG CONTAINER_VERSION="${IMAGE_VERSION}"
 
 ARG SERVICE_PORT="80"
-ARG EXPOSE_PORTS="80 53/tcp 53/udp"
+ARG EXPOSE_PORTS="80 53/udp 53/tcp"
 ARG PHP_VERSION="php81"
-ARG NODE_VERSION="system"
-ARG NODE_MANAGER="system"
 
 ARG USER="root"
 ARG DISTRO_VERSION="${IMAGE_VERSION}"
@@ -36,8 +34,6 @@ ARG PHP_SERVER
 ARG BUILD_DATE
 ARG SERVICE_PORT
 ARG EXPOSE_PORTS
-ARG NODE_VERSION
-ARG NODE_MANAGER
 ARG BUILD_VERSION
 ARG WWW_ROOT_DIR
 ARG DEFAULT_FILE_DIR
@@ -47,14 +43,13 @@ ARG DEFAULT_TEMPLATE_DIR
 ARG DISTRO_VERSION
 ARG PHP_VERSION
 
-ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini  \
-  bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}-fpm "
+ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini certbot py3-pip procps net-tools coreutils sed gawk grep attr findutils readline lsof less curl \
+  "
 
 ENV ENV=~/.bashrc
 ENV SHELL="/bin/sh"
 ENV TZ="${TIMEZONE}"
 ENV TIMEZONE="${TZ}"
-ENV container="docker"
 ENV LANG="${LANGUAGE}"
 ENV TERM="xterm-256color"
 ENV HOSTNAME="casjaysdev-bind"
@@ -73,7 +68,7 @@ RUN set -ex; \
   echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/main" >>"/etc/apk/repositories"; \
   echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/community" >>"/etc/apk/repositories"; \
   if [ "${DISTRO_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/testing" >>"/etc/apk/repositories" ; fi ; \
-  apk update --update-cache && apk add --no-cache ${PACK_LIST}
+  apk -U upgrade --no-cache && apk add --no-cache ${PACK_LIST}
 
 RUN echo "$TIMEZONE" >"/etc/timezone" ; \
   echo 'hosts: files dns' >"/etc/nsswitch.conf" ; \
@@ -83,24 +78,19 @@ RUN echo "$TIMEZONE" >"/etc/timezone" ; \
   if [ -f "/etc/profile.d/color_prompt.sh.disabled" ]; then mv -f "/etc/profile.d/color_prompt.sh.disabled" "/etc/profile.d/color_prompt.sh"; fi
 
 RUN touch "/etc/profile" "/root/.profile" ; \
-  [ -f "/etc/bash/bashrc" ] && cp -Rf "/etc/bash/bashrc" "/root/.bashrc" || [ -f "/etc/bashrc" ] && cp -Rf "/etc/bashrc" "/root/.bashrc" ; \
+  { [ -f "/etc/bash/bashrc" ] && cp -Rf "/etc/bash/bashrc" "/root/.bashrc" ; } || { [ -f "/etc/bashrc" ] && cp -Rf "/etc/bashrc" "/root/.bashrc" ; } || { [ -f "/etc/bash.bashrc" ] && cp -Rf "/etc/bash.bashrc" "/root/.bashrc" ; }; \
   sed -i 's|root:x:.*|root:x:0:0:root:/root:/bin/bash|g' "/etc/passwd" ; \
   grep -s -q 'alias quit' "/root/.bashrc" || printf '# Profile\n\n%s\n%s\n%s\n' '. /etc/profile' '. /root/.profile' "alias quit='exit 0 2>/dev/null'" >>"/root/.bashrc" ; \
   [ -f "/usr/local/etc/docker/env/default.sample" ] && [ -d "/etc/profile.d" ] && \
   cp -Rf "/usr/local/etc/docker/env/default.sample" "/etc/profile.d/container.env.sh" && chmod 755 "/etc/profile.d/container.env.sh" ; \
-  BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh"
+  BASH_CMD="$(type -P bash)" ; [ -f "$BASH_CMD" ] && rm -rf "/bin/sh" && ln -sf "$BASH_CMD" "/bin/sh" ; \
+  pip install certbot-dns-rfc2136
 
 RUN set -ex ; \
-  etc_dir="/etc/bind" var_dir="/var/bind" data_dir="/data/named" conf_dir="/config/named"; \
-  rm -Rf "/etc/rndc"* "/etc/bind/"* "/var/bind/"* ; \
-  mkdir -p "$etc_dir" "$var_dir" "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" "/run/named" "/tmp/etc/named" "/tmp/var/named" "/tmp/etc/named/keys" "/tmp/var/named/zones" ; \
-  [ -d "/tmp/etc/named" ] && cp -Rf "/tmp/etc/named/." "$etc_dir/" && cp -Rf "/tmp/etc/named/." "${DEFAULT_CONF_DIR}/named/" ; \
-  [ -d "/tmp/var/named" ] && cp -Rf "/tmp/var/named/." "$var_dir/" && cp -Rf "/tmp/var/named/." "${DEFAULT_DATA_DIR}/named/" ; \
-  chown -Rf named:named "$etc_dir" "$var_dir" "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" "/run/named" ; \
-  find "$etc_dir" "$var_dir" "/run/named" "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" -type d -exec chmod -Rf 777 \{} \; && echo "changed folder permissions to 777" ; \
-  find "$etc_dir" "$var_dir" "/run/named" "${DEFAULT_CONF_DIR}/named" "${DEFAULT_DATA_DIR}/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
+  echo
 
-RUN echo 'Running cleanup' 
+RUN echo 'Running cleanup' ; \
+  echo ""
 
 RUN rm -Rf "/config" "/data" ; \
   rm -rf /etc/systemd/system/*.wants/* ; \
@@ -125,8 +115,6 @@ ARG PHP_SERVER
 ARG BUILD_DATE
 ARG SERVICE_PORT
 ARG EXPOSE_PORTS
-ARG NODE_VERSION
-ARG NODE_MANAGER
 ARG BUILD_VERSION
 ARG DEFAULT_DATA_DIR
 ARG DEFAULT_CONF_DIR
@@ -159,7 +147,6 @@ ENV ENV=~/.bashrc
 ENV SHELL="/bin/bash"
 ENV TZ="${TIMEZONE}"
 ENV TIMEZONE="${TZ}"
-ENV container="docker"
 ENV LANG="${LANGUAGE}"
 ENV TERM="xterm-256color"
 ENV PORT="${SERVICE_PORT}"
@@ -176,6 +163,6 @@ VOLUME [ "/config","/data" ]
 
 EXPOSE ${ENV_PORTS}
 
-#CMD [ "" ]
-ENTRYPOINT [ "tini", "-p", "SIGTERM", "--", "/usr/local/bin/entrypoint.sh" ]
+CMD [ "" ]
+ENTRYPOINT [ "tini", "--", "/usr/local/bin/entrypoint.sh" ]
 HEALTHCHECK --start-period=1m --interval=2m --timeout=3s CMD [ "/usr/local/bin/entrypoint.sh", "healthcheck" ]
