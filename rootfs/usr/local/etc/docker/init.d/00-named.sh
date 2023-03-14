@@ -54,7 +54,7 @@ __update_conf_files() {
     cp -Rf "$etc_dir/" "$conf_dir/"
   fi
   #
-  mkdir -p "/run/named" "/data/log/named"
+  mkdir -p "/run/named" "/data/logs/named"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
   #
   [ -f "$etc_dir/custom.conf" ] && mv -f "$etc_dir/custom.conf" "$etc_dir/named.conf"
@@ -65,9 +65,9 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir/named.conf"   #&>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf" #&>/dev/null
   #
-  chmod -Rf 777 "/data/log"
+  chmod -Rf 777 "/data/logs"
   for logfile in default debug security; do
-    touch "/data/log/named/${logfile}.log"
+    touch "/data/logs/named/${logfile}.log"
     chmod -Rf 777 "$file"
   done
   #
@@ -122,7 +122,7 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
-  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/log/named" && echo "changed ownership to named"
+  chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/logs/named" && echo "changed ownership to named"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
   chmod -Rf 666 "$data_dir/log/named"/*
