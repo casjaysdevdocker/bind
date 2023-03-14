@@ -19,10 +19,14 @@
 # @@Template         :  other/docker-entrypoint
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set bash options
+SCRIPT_NAME="$(basename "$0" 2>/dev/null)"
 [ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # remove whitespaces from beginning argument
 while :; do [ "$1" = " " ] && shift 1 || break; done
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ "$1" = "$0" ] && shift 1
+[ "$1" = "$SCRIPT_NAME" ] && shift 1
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import the functions file
 if [ -f "/usr/local/etc/docker/functions/entrypoint.sh" ]; then
@@ -45,14 +49,15 @@ done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define script variables
 SERVICE_USER="root" # execute command as another user
+SERVICE_GROUP=""    # Set user group for permission fix
 SERVICE_UID="0"     # set the user id for creation of user
-SERVICE_PORT=""     # specifiy port which service is listening on
+SERVICE_PORT="80"   # specifiy port which service is listening on
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
-HEALTH_ENABLED="yes"                     # enable healthcheck [yes/no]
-SERVICES_LIST="tini,named,nginx,php-fpm" # comma seperated list of processes for the healthcheck
-WEB_SERVER_PORTS="${WEB_SERVER_PORTS:-}" # ports : 80,443
-HEALTH_ENDPOINTS="${HEALTH_ENDPOINTS:-}" # url endpoints: [http://localhost/health,http://localhost/test]
+HEALTH_ENABLED="yes"             # enable healthcheck [yes/no]
+SERVICES_LIST="tini,named,httpd" # comma seperated list of processes for the healthcheck
+SERVER_PORTS="80,53"             # ports : 80,443
+HEALTH_ENDPOINTS=""              # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional
 PHP_INI_DIR="${PHP_INI_DIR:-$(__find_php_ini)}"
@@ -103,13 +108,14 @@ WEB_SERVER_PORTS="${WEB_SERVER_PORTS//\/*/}"
 WEB_SERVER_PORTS="${SERVICE_PORT//,/ } ${WEB_SERVER_PORTS//,/ }"
 ENV_PORTS="$(echo "$ENV_PORTS" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ' | grep '^' || false)"
 WEB_SERVER_PORTS="$(echo "$WEB_SERVER_PORTS" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ' | grep '^' || false)"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# export variables
-
+ENV_PORTS="$(echo "$WEB_SERVER_PORTS $ENV_PORTS $SERVER_PORTS" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ' | grep '^' || false)"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # variables based on env/files
 [ "$SERVICE_PORT" = "443" ] && SSL_ENABLED="true"
 [ -f "/config/.enable_ssh" ] && SSL_ENABLED="true"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# export variables
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default directories
 BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
@@ -119,6 +125,27 @@ DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
 DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
 DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# create required directories
+mkdir -p "/run"
+mkdir -p "/tmp"
+mkdir -p "/root"
+mkdir -p "/var/log"
+mkdir -p "/run/init.d"
+mkdir -p "/config/secure"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# create required files
+touch "/var/log/entrypoint.log"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# fix permissions
+chmod -f 777 "/run"
+chmod -f 777 "/tmp"
+chmod -f 700 "/root"
+chmod -f 777 "/var/log"
+chmod -f 777 "/run/init.d"
+chmod -f 777 "/config/secure"
+chmod -f 777 "/var/log/entrypoint.log"
+################## END OF CONFIGURATION #####################
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Create the backup dir
 [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -126,24 +153,6 @@ DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/de
 if [ "$CONFIG_DIR_INITIALIZED" = "false" ] || [ "$DATA_DIR_INITIALIZED" = "false" ]; then
   [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Executing entrypoint script for bind"
 fi
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# create required files
-ln -sf "/dev/stdout" "/var/log/entrypoint.log"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# create required directories
-mkdir -p "/run"
-mkdir -p "/tmp"
-mkdir -p "/root"
-mkdir -p "/run/init.d"
-mkdir -p "/config/secure"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# fix permissions
-chmod -f 777 "/run"
-chmod -f 777 "/tmp"
-chmod -f 700 "/root"
-chmod -f 777 "/run/init.d"
-chmod -f 777 "/config/secure"
-chmod -f 777 "/var/log/entrypoint.log"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set timezone
 [ -n "$TZ" ] && [ -w "/etc/timezone" ] && echo "$TZ" >"/etc/timezone"
@@ -323,8 +332,6 @@ if [ -f "$ENTRYPOINT_PID_FILE" ]; then
   ENTRYPOINT_MESSAGE="no"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Container ip address is: $CONTAINER_IP4_ADDRESS"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Show configured listing processes
@@ -345,9 +352,14 @@ START_SERVICES="${START_SERVICES:-SYSTEM_INIT}"
 case "$1" in
 --help) # Help message
   echo 'Docker container for '$APPNAME''
-  echo "Usage: $APPNAME [exec start init shell certbot ssl procs ports healthcheck backup command]"
+  echo "Usage: $APPNAME [cron exec start init shell certbot ssl procs ports healthcheck backup command]"
   echo ""
   exit 0
+  ;;
+
+cron)
+  shift 1
+  __cron "$@" &
   ;;
 
 backup) # backup data and config dirs
@@ -399,14 +411,14 @@ healthcheck) # Docker healthcheck
 ports) # show open ports
   shift 1
   ports="$(__netstat -taupln | awk -F ' ' '{print $4}' | awk -F ':' '{print $2}' | sort --unique --version-sort | grep -v '^$' | grep '^' || echo '')"
-  [ -n "$ports" ] && printf '%s\n%s\n' "The followinf are servers:" "$ports"
+  [ -n "$ports" ] && printf '%s\n%s\n' "The following are servers:" "$ports" | tr '\n' ' '
   exit $?
   ;;
 
 procs) # show running processes
   shift 1
   ps="$(__ps axco command | grep -vE 'COMMAND|grep|ps' | sort -u || grep '^' || echo '')"
-  [ -n "$ps" ] && printf '%s\n%s\n' "Found the following processes" "$ps"
+  [ -n "$ps" ] && printf '%s\n%s\n' "Found the following processes" "$ps" | tr '\n' ' '
   exit $?
   ;;
 
@@ -421,7 +433,7 @@ certbot) # manage ssl certificate
   SSL_CERT_BOT="true"
   if [ "$1" = "create" ]; then
     shift 1
-    __certbot
+    __certbot "create"
   elif [ "$1" = "renew" ]; then
     shift 1
     __certbot "renew certonly --force-renew"
@@ -445,24 +457,21 @@ start) # show/start an init script
     [ -n "$scripts" ] && echo "$scripts" || echo "No scripts found in: /usr/local/etc/docker/init.d"
   elif [ -f "/usr/local/etc/docker/init.d/$1" ]; then
     eval "/usr/local/etc/docker/init.d/$1"
-    wait -f $!
   elif [ "$1" = "all" ]; then
     shift $#
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    exec ${SHELL:-bash}
   fi
+  __no_exit
   ;;
 
 *) # Execute primary command
   if [ "$START_SERVICES" = "yes" ] || [ ! -f "/run/init.d/entrypoint.pid" ]; then
-    echo "# - - - initializing services - - - #"
     echo "$$" >"/run/init.d/entrypoint.pid"
     __start_init_scripts "/usr/local/etc/docker/init.d"
-    tail -f "/var/log/endpoint.log" "/data/log"/*/*
+    __no_exit
   else
-    __exec_command "${@:-bash}"
-    exit $?
+    __exec_command "$@"
   fi
   ;;
 esac
