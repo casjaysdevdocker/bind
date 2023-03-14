@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
+SCRIPT_NAME="$(basename "$0" 2>/dev/null)"
 [ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 export PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
@@ -103,10 +104,12 @@ EOF
       fi
     fi
   done
-  named-checkconf -z /etc/bind/named.conf &>/dev/null && echo "named-checkconf has succeeded" || {
+  if named-checkconf -z /etc/bind/named.conf &>/dev/null; then
+    echo "named-checkconf has succeeded"
+  else
     echo "named-checkconf has failed:"
     named-checkconf -z /etc/bind/named.conf
-  }
+  fi
 
   return 0
 }
