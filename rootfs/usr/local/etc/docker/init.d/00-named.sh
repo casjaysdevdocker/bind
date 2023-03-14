@@ -49,7 +49,8 @@ __update_conf_files() {
   #
   mkdir -p "/run/named" "/data/log/named"
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
-  [ -f "$conf_dir/custom.conf" ] && cp -Rf "$conf_dir/custom.conf" "$etc_dir/named.conf"
+  [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
+  [ -f "$etc_dir/custom.conf" ] && mv -f "$etc_dir/custom.conf" "$etc_dir/named.conf"
   #
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/rndc.key"                  #&>/dev/null
   sed -i 's|REPLACE_KEY_RNDC|'$KEY_RNDC'|g' "$etc_dir/named.conf"                #&>/dev/null
