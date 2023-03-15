@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <!--
+  <head>
+    <!--
 ##@Version           :  202303091846-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  git-admin@casjaysdev.com
@@ -48,23 +47,21 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"
     />
-    <link rel="stylesheet" type="text/css" href="./css/cookieconsent.css" />
-    <link rel="stylesheet" href="./css/bootstrap.css" />
-    <link rel="stylesheet" href="./css/index.css" />
     <script src="./js/errorpages/isup.js"></script>
     <script src="./js/errorpages/homepage.js"></script>
     <script src="./js/errorpages/loaddomain.js"></script>
     <script src="./js/jquery/default.js"></script>
     <script src="./js/passprotect.min.js" defer></script>
-    <script src="./js/bootstrap.min.js" defer></script>
     <script src="./js/app.js" defer></script>
   </head>
 
-<body>
-  <div class="container text-center">
-    <h1 class="m-5">Congratulations PHP has been successfully configured</h1>
-    <?php phpinfo(); ?>
-  </div>
-</body>
-
+  <body>
+    <div class="container" style="text-align: center; align-items: center">
+      <br /><br />
+      <h1 class="m-5">Congratulations PHP has been successfully configured</h1>
+      <br /><br />
+      <?php phpinfo(); ?>
+      <br /><br />
+    </div>
+  </body>
 </html>
