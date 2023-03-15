@@ -41,7 +41,7 @@
     <meta name="theme-color" content="#000000" />
     <link rel="manifest" href="./site.webmanifest" />
 
-    <link rel="icon" type="image/icon png" href="./images/favicon.png" />
+    <link rel="icon" type="image/icon png" href="./images/icon.png" />
     <link rel="apple-touch-icon" href="./images/icon.png" />
     <link
       rel="stylesheet"
