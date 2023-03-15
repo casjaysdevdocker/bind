@@ -54,7 +54,7 @@ __update_conf_files() {
     cp -Rf "$etc_dir/" "$conf_dir/"
   fi
   #
-  mkdir -p "/run/named" "/data/logs/named"
+  mkdir -p "/run/named" 
   mkdir -p "$etc_dir/keys" "$var_dir/zones" "$conf_dir/keys" "$data_dir/zones"
   #
   [ -f "$etc_dir/custom.conf" ] && mv -f "$etc_dir/custom.conf" "$etc_dir/named.conf"
@@ -65,7 +65,8 @@ __update_conf_files() {
   sed -i 's|REPLACE_KEY_BACKUP|'$KEY_BACKUP'|g' "$etc_dir/named.conf"   #&>/dev/null
   sed -i 's|REPLACE_KEY_CERTBOT|'$KEY_CERTBOT'|g' "$etc_dir/named.conf" #&>/dev/null
   #
-  chmod -Rf 777 "/data/logs"
+  mkdir -p "/data/logs/named"
+  chmod -Rf 777 "/data/logs/named"
   for logfile in default debug security; do
     touch "/data/logs/named/${logfile}.log"
     chmod -Rf 777 "$file"
