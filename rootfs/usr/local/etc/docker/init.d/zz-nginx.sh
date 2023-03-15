@@ -78,8 +78,9 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
+  local user="${SERVICE_USER:-nginx}"
   [ -d "/run/init.d" ] || { mkdir -p "/run/init.d" && chmod 777 "/run/init.d"; }
-  grep -s -q "nginx:" "/etc/passwd" && chown -Rf nginx:nginx "$etc_dir" "$www_dir" "$data_dir/logs/nginx"
+  grep -s -q "$user:" "/etc/passwd" && chown -Rf $user:$user "$etc_dir" "$www_dir" "$data_dir/logs/nginx"
 
   return 0
 }

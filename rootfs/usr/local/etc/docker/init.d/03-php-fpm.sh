@@ -76,7 +76,8 @@ __update_ssl_conf() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
-  grep -s -q "$SERVICE_USER:" "/etc/passwd" && chown -Rf $SERVICE_USER:$SERVICE_USER "$etc_dir"
+  local user="${SERVICE_USER:-nginx}"
+  grep -s -q "$user:" "/etc/passwd" && chown -Rf $user:$user "$etc_dir" "/data/logs/php"
 
   return 0
 }
