@@ -58,8 +58,8 @@ __update_conf_files() {
   [ -f "$www_dir/www/health/index.txt" ] || echo 'ok' >"$www_dir/www/health/index.txt"
   [ -f "$www_dir/www/health/index.json" ] || echo '{ "status": "ok" }' >"$www_dir/www/health/index.json"
   #
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
-  __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/nginx.conf"
+  __replace "REPLACE_SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
+  __replace "REPLACE_SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/default.conf"
   __replace "REPLACE_SERVICE_USER" "${SERVICE_USER:-nginx}" "$etc_dir/nginx.conf"
   [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "dns" "$www_dir/www/index.php"
   [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "dns" "$www_dir/www/index.html"
