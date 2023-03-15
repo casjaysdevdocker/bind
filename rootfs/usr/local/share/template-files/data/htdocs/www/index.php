@@ -9,8 +9,8 @@
 # @@ReadME           :  
 # @@Copyright        :  Copyright: (c) 2023 Jason Hempstead, Casjays Developments
 # @@Created          :  Thursday, Mar 09, 2023 18:46 EST
-# @@File             :  index.html
-# @@Description      :  html document
+# @@File             :  index.php
+# @@Description      :  php document
 # @@Changelog        :  Updated header
 # @@TODO             :  
 # @@Other            :  
@@ -66,8 +66,12 @@
     <h1 class="m-5">Congratulations</h1>
     <h2>
       Your SERVER_SOFTWARE container has been setup.<br />
-      This file is located in /data/htdocs/www/index.html
+      This file is located in: <?php echo $_SERVER['DOCUMENT_ROOT']; ?>
       <br /><br />
+
+      SERVER: <?php echo $_SERVER['SERVER_SOFTWARE']; ?> <br />
+      SERVER Address: <?php echo $_SERVER['SERVER_ADDR']; ?> <br />
+
     </h2>
     <br /><br />
     <br /><br />
