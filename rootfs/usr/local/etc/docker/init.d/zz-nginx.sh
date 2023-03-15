@@ -61,8 +61,8 @@ __update_conf_files() {
   __replace "REPLACE_SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
   __replace "REPLACE_SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/default.conf"
   __replace "REPLACE_SERVICE_USER" "${SERVICE_USER:-nginx}" "$etc_dir/nginx.conf"
-  [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "dns" "$www_dir/www/index.php"
-  [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "dns" "$www_dir/www/index.html"
+  [ -f "$www_dir/www/index.php" ] && __replace "REPLACE_SERVER_SOFTWARE" "dns" "$www_dir/www/index.php"
+  [ -f "$www_dir/www/index.html" ] && __replace "REPLACE_SERVER_SOFTWARE" "dns" "$www_dir/www/index.html"
   if [ -z "$PHP_BIN_DIR" ]; then
     [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
     [ -f "$etc_dir/conf.d/php-fpm.conf" ] && echo "# PHP support is not enabled" >"$etc_dir/conf.d/php-fpm.conf"

@@ -57,8 +57,8 @@ __update_conf_files() {
     [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
     [ -d "$conf_dir/conf.d" ] && rm -R $etc_dir/conf.d/*
     [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
-    [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.php"
-    [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.html"
+    [ -f "$www_dir/www/index.php" ] && __replace "REPLACE_SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.php"
+    [ -f "$www_dir/www/index.html" ] && __replace "REPLACE_SERVER_SOFTWARE" "bind dns" "$www_dir/www/index.html"
   else
     echo "php can not be found"
     [ -f "$www_dir/www/info.php" ] && echo "PHP support is not enabled" >"$www_dir/www/info.php"
