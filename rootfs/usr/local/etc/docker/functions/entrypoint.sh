@@ -109,7 +109,7 @@ __init_apache() {
   local etc_dir="" conf_dir="" conf_dir="" www_dir="" apache_bin=""
   etc_dir="/etc/${1:-apache2}"
   conf_dir="/config/${1:-apache2}"
-  www_dir="${WWW_ROOT_DIR:-/data/htdocs/www}"
+  www_dir="${WWW_ROOT_DIR:-/data/htdocs}"
   apache_bin="$(type -P 'httpd' || type -P 'apache2')"
   #
   return 0

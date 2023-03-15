@@ -77,7 +77,7 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   local user="${SERVICE_USER:-nginx}"
-  grep -s -q "$user:" "/etc/passwd" && chown -Rf $user:$user "$etc_dir" "/data/logs/php"
+  grep -s -q "$user:" "/etc/passwd" && chown -Rf $user:$user "$etc_dir" "/data/logs/php" && echo "changed ownership to $user"
 
   return 0
 }

@@ -60,6 +60,7 @@ __update_conf_files() {
   #
   __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/nginx.conf"
   __replace "SERVER_PORT" "${SERVICE_PORT:-80}" "$etc_dir/vhosts.d/nginx.conf"
+  __replace "REPLACE_SERVICE_USER" "${SERVICE_USER:-nginx}" "$etc_dir/nginx.conf"
   [ -f "$www_dir/www/index.php" ] && __replace "SERVER_SOFTWARE" "dns" "$www_dir/www/index.php"
   [ -f "$www_dir/www/index.html" ] && __replace "SERVER_SOFTWARE" "dns" "$www_dir/www/index.html"
   if [ -z "$PHP_BIN_DIR" ]; then
@@ -80,7 +81,7 @@ __update_ssl_conf() {
 __pre_execute() {
   local user="${SERVICE_USER:-nginx}"
   [ -d "/run/init.d" ] || { mkdir -p "/run/init.d" && chmod 777 "/run/init.d"; }
-  grep -s -q "$user:" "/etc/passwd" && chown -Rf $user:$user "$etc_dir" "$www_dir" "$data_dir/logs/nginx"
+  grep -s -q "$user:" "/etc/passwd" && chown -Rf $user:$user "$etc_dir" "$www_dir" "$data_dir/logs/nginx" && echo "changed ownership to $user"
 
   return 0
 }

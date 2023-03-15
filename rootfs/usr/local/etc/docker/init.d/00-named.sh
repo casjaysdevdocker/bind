@@ -125,7 +125,7 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   local user="${SERVICE_USER:-named}"
-  chown -Rf $user:$user "$etc_dir" "$var_dir" "/run/named" "/data/logs/named" && echo "changed ownership to named"
+  chown -Rf $user:$user "$etc_dir" "$var_dir" "/run/named" "/data/logs/named" && echo "changed ownership to $user"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
   chmod -Rf 666 "$data_dir/logs/named"/*
