@@ -55,7 +55,7 @@ SERVICE_PORT="80"   # specifiy port which service is listening on
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
 HEALTH_ENABLED="yes"             # enable healthcheck [yes/no]
-SERVICES_LIST="tini,named,httpd" # comma seperated list of processes for the healthcheck
+SERVICES_LIST="tini,named,httpd,php-fpm" # comma seperated list of processes for the healthcheck
 SERVER_PORTS="80,53"             # ports : 80,443
 HEALTH_ENDPOINTS=""              # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

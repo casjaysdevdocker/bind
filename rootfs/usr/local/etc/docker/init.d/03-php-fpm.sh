@@ -41,8 +41,8 @@ php_bin="${PHP_BIN_DIR:-$(__find_php_bin)}"
 __update_conf_files() {
   echo "Initializing php in $conf_dir"
   if [ -n "$php_bin" ]; then
-    mkdir -p "$data_dir/log/php"
-    chmod -Rf 777 "$data_dir/log/php" /var/tmp
+    mkdir -p "$data_dir/logs/php"
+    chmod -Rf 777 "$data_dir/logs/php" /var/tmp
     if [ "$etc_dir" != "/etc/php" ]; then
       [ -d "/etc/php" ] && rm -Rf "/etc/php"
       ln -sf "$etc_dir" "/etc/php"

@@ -67,7 +67,7 @@ __update_conf_files() {
   #
   mkdir -p "/data/logs/named"
   chmod -Rf 777 "/data/logs/named"
-  for logfile in default debug security; do
+  for logfile in xfer update notify querylog default debug security; do
     touch "/data/logs/named/${logfile}.log"
     chmod -Rf 777 "$file"
   done
@@ -126,7 +126,7 @@ __pre_execute() {
   chown -Rf named:named "$etc_dir" "$var_dir" "/run/named" "/data/logs/named" && echo "changed ownership to named"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type d -exec chmod -Rf 777 {} \; && echo "changed folder permissions to 777"
   find "$etc_dir" "$var_dir" "$conf_dir" "$data_dir" "/run/named" -type f -exec chmod -Rf 664 {} \; && echo "changed file permissions to 664"
-  chmod -Rf 666 "$data_dir/log/named"/*
+  chmod -Rf 666 "$data_dir/logs/named"/*
 
   return 0
 }

@@ -42,8 +42,8 @@ nginx_bin="$(type -P 'nginx')"
 __update_conf_files() {
   [ -z "$(type -p 'nginx' 2>/dev/null)" ] && echo "The program nginx is not installed" && exit 1
   echo "Initializing nginx web server in $conf_dir"
-  mkdir -p "$data_dir/log/nginx"
-  chmod -Rf 777 "$data_dir/log/nginx"
+  mkdir -p "$data_dir/logs/nginx"
+  chmod -Rf 777 "$data_dir/logs/nginx"
   [ -d "$etc_dir" ] || mkdir -p "$etc_dir"
   [ -d "$conf_dir" ] && cp -Rf "$conf_dir/." "$etc_dir/"
   if [ "$SSL_ENABLED" = "true" ]; then
@@ -79,7 +79,7 @@ __update_ssl_conf() {
 # function to run before executing
 __pre_execute() {
   [ -d "/run/init.d" ] || { mkdir -p "/run/init.d" && chmod 777 "/run/init.d"; }
-  grep -s -q "nginx:" "/etc/passwd" && chown -Rf nginx:nginx "$etc_dir" "$www_dir" "$data_dir/log/nginx"
+  grep -s -q "nginx:" "/etc/passwd" && chown -Rf nginx:nginx "$etc_dir" "$www_dir" "$data_dir/logs/nginx"
 
   return 0
 }
