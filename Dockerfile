@@ -43,7 +43,7 @@ ARG DEFAULT_TEMPLATE_DIR
 ARG DISTRO_VERSION
 ARG PHP_VERSION
 
-ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini certbot py3-pip procps net-tools coreutils sed gawk grep attr findutils readline lsof less curl \
+ARG PACK_LIST="bash bash-completion git curl wget sudo iproute2 ssmtp openssl jq ca-certificates tzdata mailcap ncurses util-linux pciutils usbutils coreutils binutils findutils grep rsync zip certbot tini certbot py3-pip procps net-tools coreutils sed gawk grep attr findutils readline lsof less curl unzip \
   bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}-fpm"
 
 ENV ENV=~/.bashrc
