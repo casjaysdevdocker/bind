@@ -101,7 +101,7 @@ __pcheck() { [ -n "$(type -P pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null 
 __pgrep() { __pcheck "${1:-EXEC_CMD_BIN}" || __ps aux 2>/dev/null | grep -Fw " ${1:-$EXEC_CMD_BIN}" | grep -qv ' grep' | grep '^' && return 0 || return 10; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Allow ENV_ variable
-[ -f "/config/env/$EXEC_CMD_BIN.sh" ] && "/config/env/$EXEC_CMD_BIN.sh" # Import env file
+[ -f "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" ] && "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" # Import env file
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 WORKDIR="${ENV_WORKDIR:-$WORKDIR}"                            # change to directory
 SERVICE_USER="${ENV_SERVICE_USER:-$SERVICE_USER}"             # execute command as another user
