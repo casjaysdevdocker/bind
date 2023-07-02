@@ -52,7 +52,7 @@ ENV TZ="${TIMEZONE}"
 ENV TIMEZONE="${TZ}"
 ENV LANG="${LANGUAGE}"
 ENV TERM="xterm-256color"
-ENV HOSTNAME="casjaysdev-bind"
+ENV HOSTNAME="casjaysdevdocker-bind"
 
 USER ${USER}
 WORKDIR /root
