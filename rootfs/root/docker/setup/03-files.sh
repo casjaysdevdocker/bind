@@ -64,7 +64,10 @@ fi
 unset config
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
-rm -Rf /etc/bind /etc/named /var/bind /var/named
+rm -Rf /etc/bind.* /etc/named.*
+rm -Rf "/etc/bind"/* "/var/bind"/*
+rm -Rf "/etc/named"/* "/var/named"/*
+mkdir -p "/etc/bind/keys" "/var/bind/zones" "/var/bind/primary" "/var/bind/secondary" "/var/bind/stats" "/var/bind/dynamic"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the exit code
 exitCode=$?

@@ -240,7 +240,8 @@ __update_conf_files() {
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # custom commands
-  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$CONF_DIR/secrets" "$VAR_DIR/zones" "$VAR_DIR/slaves" "$DATA_DIR/zones" "$DATA_DIR/stats"
+  mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
+  mkdir -p "$ETC_DIR/keys" "$DATA_DIR/primary" "$DATA_DIR/secondary" "$DATA_DIR/stats" "$DATA_DIR/dynamic"
   for logfile in xfer update notify querylog default debug security; do
     touch "$LOG_DIR/$logfile.log"
     chmod -Rf 777 "$logfile"
@@ -260,6 +261,8 @@ __update_conf_files() {
   __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$CONF_DIR/named.conf"
   __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$ETC_DIR/named.conf"
+  __replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
+  __replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
   if [ -f "$CONF_DIR/custom.conf" ]; then
@@ -284,8 +287,21 @@ __pre_execute() {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions to run after copying to /config
   zone_files="$(find "$data_dir/zones/" -type f | wc -l)"
-  if [ $zone_files = 0 ] && [ ! -f "$DATA_DIR/zones/$HOSTNAME.zone" ]; then
-    cat <<EOF | tee "$DATA_DIR/zones/$HOSTNAME.zone" &>/dev/null
+  if [ $zone_files = 0 ] && [ ! -f "$DATA_DIR/primary/$HOSTNAME.zone" ]; then
+    cat <<EOF >>"$ETC_DIR/named.conf"
+#  ********** begin $HOSTNAME **********
+zone "$HOSTNAME" {
+    type master;
+    notify yes;
+    allow-transfer { any; key "backup-key"; trusted; };
+    allow-update {key "certbot."; key "dhcp-key"; trusted; };
+    file "$VAR_DIR/primary/$file_name";
+};
+#  ********** end $HOSTNAME **********
+
+EOF
+
+    cat <<EOF | tee "$DATA_DIR/primary/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $DNS_SERIAL 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
@@ -298,21 +314,21 @@ EOF
     file_name="$(basename "$dns_file")"
     domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
     if [ -f "$dns_file" ]; then
-      cp -Rf "$dns_file" "$VAR_DIR/zones/$file_name"
       if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$ETC_DIR/named.conf"; then
         if [ "$DNS_TYPE" = "secondary" ]; then
-          echo "" >"$VAR_DIR/slaves/$file_name"
+          [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
           cat <<EOF >>"$ETC_DIR/named.conf"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
     masters { $DNS_SERVER_PRIMARY; };
-    file "$VAR_DIR/slaves/$file_name";
+    file "$VAR_DIR/secondary/$file_name";
 };
 #  ********** end $domain_name **********
 
 EOF
         else
+          cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
           cat <<EOF >>"$ETC_DIR/named.conf"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
@@ -321,7 +337,7 @@ zone "$domain_name" {
     also-notify { $DNS_SERVER_SECONDARY; };
     allow-transfer { any; key "backup-key"; trusted; };
     allow-update {key "certbot."; key "dhcp-key"; trusted; };
-    file "$VAR_DIR/zones/$file_name";
+    file "$VAR_DIR/primary/$file_name";
 };
 #  ********** end $domain_name **********
 
