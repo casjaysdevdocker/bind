@@ -39,7 +39,7 @@ fi
 unset bin
 if [ -d "/tmp/var" ]; then
   for var in "/tmp/var"/*; do
-    name="${var//\/tmp\/var\//}"
+    name="$(basename "$var")"
     echo "Installing $var to /var/$name"
     if [ -d "$var" ]; then
       mkdir -p "/var/$name"
@@ -52,7 +52,7 @@ fi
 unset var
 if [ -d "/tmp/etc" ]; then
   for config in "/tmp/etc"/*; do
-    name="${config//\/tmp\/etc\//}"
+    name="$(basename "$config")"
     echo "Installing $config to /etc/$name"
     if [ -d "$config" ]; then
       mkdir -p "/etc/$name"
@@ -68,7 +68,7 @@ fi
 unset config
 if [ -d "/tmp/data" ]; then
   for data in "/tmp/data"/*; do
-    name="${data//\/tmp\/data\//}"
+    name="$(basename "$bin")"
     echo "Installing $data to /usr/local/share/template-files/data"
     if [ -d "$data" ]; then
       mkdir -p "/usr/local/share/template-files/data/$name"
