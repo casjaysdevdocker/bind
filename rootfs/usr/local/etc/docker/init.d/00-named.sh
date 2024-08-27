@@ -158,7 +158,7 @@ user_pass="${NAMED_USER_PASS_WORD:-}" # normal user password
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional predefined variables
 DNS_SERIAL="$(date +'%Y%m%d%S')"
-KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key md5)}"
+KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key sha256)}"
 KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key sha256)}"
 KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key sha256)}"
 KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
