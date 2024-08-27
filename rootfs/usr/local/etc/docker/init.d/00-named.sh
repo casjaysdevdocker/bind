@@ -672,7 +672,7 @@ __pre_execute
 __fix_permissions "$SERVICE_USER" "$SERVICE_GROUP"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
-__run_pre_execute_checks 2>/dev/stderr | tee -a -p "/data/logs/entrypoint.log" "/data/logs/init.txt" || return 20
+__run_pre_execute_checks 2>/dev/stderr | tee -a -p "/data/logs/entrypoint.log" "/data/logs/init.txt" || exit 20
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __run_start_script 2>>/dev/stderr | tee -p -a "/data/logs/entrypoint.log" && errorCode=0 || errorCode=10
 if [ -n "$EXEC_CMD_BIN" ]; then
