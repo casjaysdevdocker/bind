@@ -51,6 +51,7 @@ if [ -d "/tmp/var" ]; then
 fi
 unset var
 if [ -d "/tmp/etc" ]; then
+  mkdir -p "/usr/local/share/template-files/config"
   for config in "/tmp/etc"/*; do
     name="$(basename "$config")"
     echo "Installing $config to /etc/$name"
@@ -67,6 +68,7 @@ if [ -d "/tmp/etc" ]; then
 fi
 unset config
 if [ -d "/tmp/data" ]; then
+  mkdir -p "/usr/local/share/template-files/data"
   for data in "/tmp/data"/*; do
     name="$(basename "$data")"
     echo "Installing $data to /usr/local/share/template-files/data"
