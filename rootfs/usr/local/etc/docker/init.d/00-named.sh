@@ -62,7 +62,7 @@ __rndc_key() { grep -s 'key "rndc-key" ' /etc/named.conf | grep -v 'KEY_RNDC' | 
 __dhcp_key() { grep -s 'key "dhcp-key" ' /etc/named.conf | grep -v 'KEY_DHCP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
 __certbot_key() { grep -s 'key "certbot" ' /etc/named.conf | grep -v 'KEY_CERTBOT' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
 __backup_key() { grep -s 'key "backup-key" ' /etc/named.conf | grep -v 'KEY_BACKUP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
-__tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
+__tsig_key() { tsig-keygen -a hmac-${1:-sha256} | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Script to execute
 START_SCRIPT="/usr/local/etc/docker/exec/$SERVICE_NAME"
@@ -158,10 +158,10 @@ user_pass="${NAMED_USER_PASS_WORD:-}" # normal user password
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional predefined variables
 DNS_SERIAL="$(date +'%Y%m%d%S')"
-KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key)}"
-KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key)}"
-KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key)}"
-KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key)}"
+KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key md5)}"
+KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key sha256)}"
+KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key sha256)}"
+KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
 DNS_TYPE="${DNS_TYPE:-primary}"
