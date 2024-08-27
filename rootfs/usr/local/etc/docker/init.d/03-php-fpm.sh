@@ -114,9 +114,9 @@ SERVICE_UID="0" # set the user id
 SERVICE_GID="0" # set the group id
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables - keep single quotes variables will be expanded later
-EXEC_CMD_BIN='php-fpm'                                                            # command to execute
-EXEC_CMD_ARGS='--allow-to-run-as-root --fpm-config $ETC_DIR/php-fpm/php-fpm.conf' # command arguments
-EXEC_PRE_SCRIPT=''                                                                # execute script before
+EXEC_CMD_BIN='php-fpm'                                                    # command to execute
+EXEC_CMD_ARGS='--allow-to-run-as-root --fpm-config $ETC_DIR/php-fpm.conf' # command arguments
+EXEC_PRE_SCRIPT=''                                                        # execute script before
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is this service a web server
 IS_WEB_SERVER="no"
