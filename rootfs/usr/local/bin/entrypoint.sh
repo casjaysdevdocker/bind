@@ -78,8 +78,8 @@ unset set_env
 RUNAS_USER="root" # normally root
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # User and group in which the service switches to - IE: nginx,apache,mysql,postgres
-SERVICE_USER="bind"  # execute command as another user
-SERVICE_GROUP="bind" # Set the service group
+SERVICE_USER="named"  # execute command as another user
+SERVICE_GROUP="named" # Set the service group
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set user and group ID
 SERVICE_UID="0" # set the user id
@@ -92,9 +92,9 @@ WEB_SERVER_PORT="" # port : 80,443
 SERVER_PORTS="" # specifiy other ports
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
-HEALTH_ENABLED="yes"                    # enable healthcheck [yes/no]
-SERVICES_LIST="tini,bind,nginx,php-fpm" # comma seperated list of processes for the healthcheck
-HEALTH_ENDPOINTS=""                     # url endpoints: [http://localhost/health,http://localhost/test]
+HEALTH_ENABLED="yes"                     # enable healthcheck [yes/no]
+SERVICES_LIST="tini,named,nginx,php-fpm" # comma seperated list of processes for the healthcheck
+HEALTH_ENDPOINTS=""                      # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Update path var
 export PATH RUNAS_USER SERVICE_USER SERVICE_GROUP SERVICE_UID SERVICE_GID WWW_ROOT_DIR DATABASE_DIR

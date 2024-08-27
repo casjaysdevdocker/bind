@@ -79,8 +79,8 @@ DATABASE_DIR="$DATABASE_BASE_DIR/$DATABASE_SUBDIR"
 WWW_ROOT_DIR="/usr/share/httpd/default"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default predefined variables
-DATA_DIR="/data/php-fpm" # set data directory
-CONF_DIR="/config/php"   # set config directory
+DATA_DIR="/data/php"   # set data directory
+CONF_DIR="/config/php" # set config directory
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # set the containers etc directory
 ETC_DIR="/etc/php"
@@ -88,9 +88,9 @@ ETC_DIR="/etc/php"
 # set the var dir
 VAR_DIR=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-TMP_DIR="/tmp/php-fpm"       # set the temp dir
-RUN_DIR="/run/php-fpm"       # set scripts pid dir
-LOG_DIR="/data/logs/php-fpm" # set log directory
+TMP_DIR="/tmp/php"       # set the temp dir
+RUN_DIR="/run/php"       # set scripts pid dir
+LOG_DIR="/data/logs/php" # set log directory
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the working dir
 WORK_DIR=""
