@@ -182,7 +182,10 @@ ADDITIONAL_CONFIG_DIRS=""
 CMD_ENV=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Overwrite based on file/directory
-
+[ -f "$CONF_DIR/secrets/rndc.key" ] && KEY_RNDC="$(<"$CONF_DIR/secrets/rndc.key")"
+[ -f "$CONF_DIR/secrets/dhcp.key" ] && KEY_DHCP="$(<"$CONF_DIR/secrets/dhcp.key")"
+[ -f "$CONF_DIR/secrets/backup.key" ] && KEY_BACKUP="$(<"$CONF_DIR/secrets/backup.key")"
+[ -f "$CONF_DIR/secrets/certbot.key" ] && KEY_CERTBOT="$(<"$CONF_DIR/secrets/certbot.key")"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Per Application Variables or imports
 
@@ -236,7 +239,7 @@ __update_conf_files() {
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # custom commands
-  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$VAR_DIR/zones" "$VAR_DIR/slaves" "$DATA_DIR/zones" "$DATA_DIR/stats"
+  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$CONF_DIR/secrets" "$VAR_DIR/zones" "$VAR_DIR/slaves" "$DATA_DIR/zones" "$DATA_DIR/stats"
   for logfile in xfer update notify querylog default debug security; do
     touch "$LOG_DIR/$logfile.log"
     chmod -Rf 777 "$logfile"
@@ -263,6 +266,10 @@ __update_conf_files() {
   elif [ -f "$ETC_DIR/custom.conf" ]; then
     mv -f "$ETC_DIR/custom.conf" "$ETC_DIR/named.conf"
   fi
+  [ -n "$KEY_RNDC" ] && echo "$KEY_RNDC" >"$CONF_DIR/secrets/rndc.key"
+  [ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
+  [ -n "$KEY_BACKUP" ] && echo "$KEY_BACKUP" >"$CONF_DIR/secrets/backup.key"
+  [ -n "$KEY_CERTBOT" ] && echo "$KEY_CERTBOT" >"$CONF_DIR/secrets/certbot.key"
   # exit function
   return $exitCode
 }
