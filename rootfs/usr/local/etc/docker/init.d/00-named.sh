@@ -236,7 +236,7 @@ __update_conf_files() {
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # custom commands
-  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$VAR_DIR/zones" "$DATA_DIR/zones" "$DATA_DIR/stats"
+  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$VAR_DIR/zones" "$VAR_DIR/slaves" "$DATA_DIR/zones" "$DATA_DIR/stats"
   for logfile in xfer update notify querylog default debug security; do
     touch "$LOG_DIR/$logfile.log"
     chmod -Rf 777 "$logfile"
@@ -248,12 +248,14 @@ __update_conf_files() {
   __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$ETC_DIR/named.conf"
   __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$ETC_DIR/named.conf"
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$ETC_DIR/named.conf"
+  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$ETC_DIR/named.conf"
 
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/rndc.key"
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$CONF_DIR/named.conf"
+  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$ETC_DIR/named.conf"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
   if [ -f "$CONF_DIR/custom.conf" ]; then
@@ -291,12 +293,13 @@ EOF
       cp -Rf "$dns_file" "$VAR_DIR/zones/$file_name"
       if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$ETC_DIR/named.conf"; then
         if [ "$DNS_TYPE" = "secondary" ]; then
+          echo "" >"$VAR_DIR/slaves/$file_name"
           cat <<EOF >>"$ETC_DIR/named.conf"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
     masters { $DNS_SERVER_PRIMARY; };
-    file "$VAR_DIR/zones/$file_name";
+    file "$VAR_DIR/slaves/$file_name";
 };
 #  ********** end $domain_name **********
 
@@ -307,8 +310,9 @@ EOF
 zone "$domain_name" {
     type master;
     notify yes;
-    allow-update {key "certbot."; key "dhcp-key"; trusted; };
+    also-notify { $DNS_SERVER_SECONDARY; };
     allow-transfer { any; key "backup-key"; trusted; };
+    allow-update {key "certbot."; key "dhcp-key"; trusted; };
     file "$VAR_DIR/zones/$file_name";
 };
 #  ********** end $domain_name **********
