@@ -429,6 +429,7 @@ backup)
   ;;
 # Docker healthcheck
 healthcheck)
+  shift
   healthStatus=0
   services="${SERVICES_LIST:-$@}"
   healthEnabled="${HEALTH_ENABLED:-}"
@@ -436,6 +437,7 @@ healthcheck)
   healthEndPoints="${HEALTH_ENDPOINTS:-}"
   healthMessage="Everything seems to be running"
   services="${services//,/ }"
+  { [ "$1" = "init" ] || [ "$1" = "test" ]; } && exit 0
   [ "$healthEnabled" = "yes" ] || exit 0
   for proc in $services; do
     if [ -n "$proc" ]; then
