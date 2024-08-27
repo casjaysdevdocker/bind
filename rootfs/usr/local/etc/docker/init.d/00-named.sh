@@ -118,9 +118,9 @@ SERVICE_UID="0" # set the user id
 SERVICE_GID="0" # set the group id
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables - keep single quotes variables will be expanded later
-EXEC_CMD_BIN='named'                      # command to execute
-EXEC_CMD_ARGS='-f -c $ETC_DIR/named.conf' # command arguments
-EXEC_PRE_SCRIPT=''                        # execute script before
+EXEC_CMD_BIN='named'                                          # command to execute
+EXEC_CMD_ARGS='-f -g -u $SERVICE_USER -c $ETC_DIR/named.conf' # command arguments
+EXEC_PRE_SCRIPT=''                                            # execute script before
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is this service a web server
 IS_WEB_SERVER="no"
@@ -250,8 +250,8 @@ __update_conf_files() {
   # custom commands
   mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
   mkdir -p "$ETC_DIR/keys" "$ETC_DIR/secrets" "$VAR_DIR/primary" "$VAR_DIR/secondary" "$VAR_DIR/stats" "$VAR_DIR/dynamic"
-  for logfile in xfer update notify querylog default debug security; do
-    touch "$LOG_DIR/$logfile.log"
+  for logfile in debug.run querylog.log security.log xfer.log update.log notify.log client.log default.log general.log database.log; do
+    touch "$LOG_DIR/$logfile"
     chmod -Rf 777 "$logfile"
   done
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
