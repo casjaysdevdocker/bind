@@ -157,11 +157,11 @@ user_pass="${NAMED_USER_PASS_WORD:-}" # normal user password
 [ -f "/config/env/named.sh" ] && . "/config/env/named.sh"               # Overwrite the variabes
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional predefined variables
+DNS_SERIAL="$(date +'%Y%m%d%S')"
 KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key)}"
 KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key)}"
 KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key)}"
 KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key)}"
-DNS_SERIAL="$(date +'%Y%m%d%S')"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
 DNS_TYPE="${DNS_TYPE:-primary}"
@@ -277,7 +277,7 @@ __pre_execute() {
   if [ $zone_files = 0 ] && [ ! -f "$DATA_DIR/zones/$HOSTNAME.zone" ]; then
     cat <<EOF | tee "$DATA_DIR/zones/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
-@                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $serial 10800 3600 1209600 38400)
+@                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $DNS_SERIAL 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
 $HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 
