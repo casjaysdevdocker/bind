@@ -68,7 +68,7 @@ fi
 unset config
 if [ -d "/tmp/data" ]; then
   for data in "/tmp/data"/*; do
-    name="$(basename "$bin")"
+    name="$(basename "$data")"
     echo "Installing $data to /usr/local/share/template-files/data"
     if [ -d "$data" ]; then
       mkdir -p "/usr/local/share/template-files/data/$name"
