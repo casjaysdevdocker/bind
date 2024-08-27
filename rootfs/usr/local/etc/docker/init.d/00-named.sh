@@ -83,8 +83,8 @@ DATABASE_DIR="$DATABASE_BASE_DIR/$DATABASE_SUBDIR"
 WWW_ROOT_DIR="/usr/share/httpd/default"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default predefined variables
-DATA_DIR="/data/named"   # set data directory
-CONF_DIR="/config/named" # set config directory
+DATA_DIR="/data/bind"   # set data directory
+CONF_DIR="/config/bind" # set config directory
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # set the containers etc directory
 ETC_DIR="/etc/bind"
@@ -92,9 +92,9 @@ ETC_DIR="/etc/bind"
 # set the var dir
 VAR_DIR="/var/bind"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-TMP_DIR="/tmp/named"       # set the temp dir
-RUN_DIR="/run/named"       # set scripts pid dir
-LOG_DIR="/data/logs/named" # set log directory
+TMP_DIR="/tmp/bind"       # set the temp dir
+RUN_DIR="/run/bind"       # set scripts pid dir
+LOG_DIR="/data/logs/bind" # set log directory
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the working dir
 WORK_DIR=""
@@ -195,7 +195,8 @@ __run_precopy() {
   # Define environment
   local hostname=${HOSTNAME}
   # Define actions/commands
-
+  [ -d "/data/named" ] && [ ! -d "$DATA_DIR" ] && mv -fv "/data/named" "$DATA_DIR"
+  [ -d "/config/named" ] && [ ! -d "$CONF_DIR" ] && mv -fv "/config/named" "$CONF_DIR"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom prerun functions - IE setup WWW_ROOT_DIR
