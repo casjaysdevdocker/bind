@@ -162,6 +162,7 @@ KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key sha256)}"
 KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key sha256)}"
 KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key sha256)}"
 KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
+DNS_ZONE_FILE="$ETC_DIR/zones.conf"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
 DNS_TYPE="${DNS_TYPE:-primary}"
@@ -216,7 +217,14 @@ __run_pre_execute_checks() {
   __banner "$pre_execute_checks_MessageST"
   # Put command to execute in parentheses
   {
-    true
+    if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
+      echo "named-checkconf has succeeded"
+      return 0
+    else
+      echo "named-checkconf has failed:"
+      named-checkconf -z $NAMED_CONFIG_FILE
+      return 1
+    fi
   }
   exitStatus=$?
   __banner "$pre_execute_checks_MessageEnd: Status $exitStatus"
@@ -281,7 +289,7 @@ __pre_execute() {
   # define actions to run after copying to /config
   zone_files="$(find "$DATA_DIR/zones/" -type f | wc -l)"
   if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
-    cat <<EOF >>"$ETC_DIR/zones.conf"
+    cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $HOSTNAME **********
 zone "$HOSTNAME" {
     type master;
@@ -310,7 +318,7 @@ EOF
       if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
         if [ "$DNS_TYPE" = "secondary" ]; then
           [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
-          cat <<EOF >>"$ETC_DIR/zones.conf"
+          cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
@@ -322,7 +330,7 @@ zone "$domain_name" {
 EOF
         else
           cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
-          cat <<EOF >>"$ETC_DIR/zones.conf"
+          cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type master;
@@ -336,16 +344,10 @@ zone "$domain_name" {
 
 EOF
         fi
-        grep -qs "$domain_name" "$NAMED_CONFIG_FILE" "$ETC_DIR/zones.conf" && echo "Added $domain_name to $NAMED_CONFIG_FILE"
+        grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
       fi
     fi
   done
-  if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
-    echo "named-checkconf has succeeded"
-  else
-    echo "named-checkconf has failed:"
-    named-checkconf -z $NAMED_CONFIG_FILE
-  fi
   [ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # unset unneeded variables
