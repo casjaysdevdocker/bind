@@ -12,8 +12,8 @@
 # @@Description      :  Entrypoint file for bind
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
-# @@Other            :  
-# @@Resource         :  
+# @@Other            :
+# @@Resource         :
 # @@Terminal App     :  no
 # @@sudo/root        :  no
 # @@Template         :  other/docker-entrypoint
@@ -92,9 +92,9 @@ WEB_SERVER_PORT="" # port : 80,443
 SERVER_PORTS="" # specifiy other ports
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
-HEALTH_ENABLED="yes" # enable healthcheck [yes/no]
-SERVICES_LIST="tini" # comma seperated list of processes for the healthcheck
-HEALTH_ENDPOINTS=""  # url endpoints: [http://localhost/health,http://localhost/test]
+HEALTH_ENABLED="yes"                    # enable healthcheck [yes/no]
+SERVICES_LIST="tini,bind,nginx,php-fpm" # comma seperated list of processes for the healthcheck
+HEALTH_ENDPOINTS=""                     # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Update path var
 export PATH RUNAS_USER SERVICE_USER SERVICE_GROUP SERVICE_UID SERVICE_GID WWW_ROOT_DIR DATABASE_DIR
