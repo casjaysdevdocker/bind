@@ -59,8 +59,10 @@ printf '%s\n' "# - - - Initializing $SERVICE_NAME - - - #"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
 __rndc_key() { grep -s 'key "rndc-key" ' /etc/named.conf | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
+__dhcp_key() { grep -s 'key "dhcp-key" ' /etc/named.conf | grep -v 'KEY_DHCP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
+__certbot_key() { grep -s 'key "certbot" ' /etc/named.conf | grep -v 'KEY_CERTBOT' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
+__backup_key() { grep -s 'key "backup-key" ' /etc/named.conf | grep -v 'KEY_BACKUP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
 __tsig_key() { tsig-keygen -a hmac-sha256 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'wp/HApbthaVPjwqgp6ziLlmnkyLSNbRTehkdARBDcpI='; }
-
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Script to execute
 START_SCRIPT="/usr/local/etc/docker/exec/$SERVICE_NAME"
@@ -155,15 +157,16 @@ user_pass="${NAMED_USER_PASS_WORD:-}" # normal user password
 [ -f "/config/env/named.sh" ] && . "/config/env/named.sh"               # Overwrite the variabes
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional predefined variables
-KEY_RNDC="${KEY_RNDC:-$(__tsig_key)}"
-KEY_DHCP="${KEY_DHCP:-$(__tsig_key)}"
-KEY_BACKUP="${KEY_BACKUP:-$(__tsig_key)}"
-KEY_CERTBOT="${KEY_CERTBOT:-$(__tsig_key)}"
+KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key)}"
+KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key)}"
+KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key)}"
+KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key)}"
 DNS_SERIAL="$(date +'%Y%m%d%S')"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
-DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-}"
-DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-}"
+DNS_TYPE="${DNS_TYPE:-primary}"
+DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-127.0.0.1}"
+DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-127.0.0.1}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Specifiy custom directories to be created
 ADD_APPLICATION_FILES=""
@@ -233,13 +236,19 @@ __update_conf_files() {
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # custom commands
-  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$VAR_DIR/zones" "$DATA_DIR/zones"
+  mkdir -p "$ETC_DIR/keys" "$CONF_DIR/keys" "$VAR_DIR/zones" "$DATA_DIR/zones" "$DATA_DIR/stats"
   for logfile in xfer update notify querylog default debug security; do
     touch "$LOG_DIR/$logfile.log"
     chmod -Rf 777 "$logfile"
   done
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # replace variables
+  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
+  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/named.conf"
+  __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$ETC_DIR/named.conf"
+  __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$ETC_DIR/named.conf"
+  __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$ETC_DIR/named.conf"
+
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/rndc.key"
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$CONF_DIR/named.conf"
