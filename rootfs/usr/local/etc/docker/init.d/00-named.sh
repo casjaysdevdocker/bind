@@ -241,7 +241,7 @@ __update_conf_files() {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # custom commands
   mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
-  mkdir -p "$ETC_DIR/keys" "$DATA_DIR/primary" "$DATA_DIR/secondary" "$DATA_DIR/stats" "$DATA_DIR/dynamic"
+  mkdir -p "$ETC_DIR/keys" "$ETC_DIR/secrets" "$VAR_DIR/primary" "$VAR_DIR/secondary" "$VAR_DIR/stats" "$VAR_DIR/dynamic"
   for logfile in xfer update notify querylog default debug security; do
     touch "$LOG_DIR/$logfile.log"
     chmod -Rf 777 "$logfile"
@@ -254,15 +254,8 @@ __update_conf_files() {
   __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$NAMED_CONFIG_FILE"
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
   __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
-
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/rndc.key"
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/named.conf"
-  __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$CONF_DIR/named.conf"
-  __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$CONF_DIR/named.conf"
-  __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$CONF_DIR/named.conf"
-  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
-  __replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
+  __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
+  __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
   if [ -f "$CONF_DIR/custom.conf" ]; then
