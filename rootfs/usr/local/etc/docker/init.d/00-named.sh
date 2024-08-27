@@ -185,8 +185,8 @@ CMD_ENV=""
 # Overwrite based on file/directory
 [ -f "$CONF_DIR/secrets/rndc.key" ] && KEY_RNDC="$(grep -vE '#|^$' "$CONF_DIR/secrets/rndc.key" | sed 's| ||g' | head -n1)"
 [ -f "$CONF_DIR/secrets/dhcp.key" ] && KEY_DHCP="$(grep -vE '#|^$' "$CONF_DIR/secrets/dhcp.key" | sed 's| ||g' | head -n1)"
-[ -f "$CONF_DIR/secrets/backup.key" ] && KEY_BACKUP="$(grep -vE '#|^$' "$CONF_DIR/secrets/backup.key|sed 's| ||g'" | head -n1)"
-[ -f "$CONF_DIR/secrets/certbot.key" ] && KEY_CERTBOT="$(grep -vE '#|^$' "$CONF_DIR/secrets/certbot.ke|sed 's| ||g'y" | head -n1)"
+[ -f "$CONF_DIR/secrets/backup.key" ] && KEY_BACKUP="$(grep -vE '#|^$' "$CONF_DIR/secrets/backup.key" | sed 's| ||g' | head -n1)"
+[ -f "$CONF_DIR/secrets/certbot.key" ] && KEY_CERTBOT="$(grep -vE '#|^$' "$CONF_DIR/secrets/certbot.key" | sed 's| ||g' | head -n1)"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Per Application Variables or imports
 [ -f "$CONF_DIR/named.conf" ] && NAMED_CONFIG_FILE="$CONF_DIR/named.conf" && NAMED_CONFIG_COPY="yes" || NAMED_CONFIG_FILE="$ETC_DIR/named.conf"
