@@ -64,7 +64,7 @@ fi
 unset config
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
-rm -Rf /etc/bind /etc/named
+rm -Rf /etc/bind /etc/named /var/bind /var/named
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the exit code
 exitCode=$?
