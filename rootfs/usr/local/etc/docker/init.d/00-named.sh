@@ -188,7 +188,7 @@ CMD_ENV=""
 [ -f "$CONF_DIR/secrets/certbot.key" ] && KEY_CERTBOT="$(<"$CONF_DIR/secrets/certbot.key")"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Per Application Variables or imports
-
+[ -f "$CONF_DIR/named.conf" ] && NAMED_CONFIG_FILE="$CONF_DIR/named.conf" && NAMED_CONFIG_COPY="yes" || NAMED_CONFIG_FILE="$ETC_DIR/named.conf"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom commands to run before copying to /config
 __run_precopy() {
@@ -249,26 +249,26 @@ __update_conf_files() {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # replace variables
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/named.conf"
-  __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$ETC_DIR/named.conf"
-  __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$ETC_DIR/named.conf"
-  __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$ETC_DIR/named.conf"
-  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$ETC_DIR/named.conf"
+  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$NAMED_CONFIG_FILE"
+  __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$NAMED_CONFIG_FILE"
+  __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$NAMED_CONFIG_FILE"
+  __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
+  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
 
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/rndc.key"
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$CONF_DIR/named.conf"
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$CONF_DIR/named.conf"
-  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$ETC_DIR/named.conf"
+  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
   __replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
   __replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
   if [ -f "$CONF_DIR/custom.conf" ]; then
-    mv -f "$CONF_DIR/custom.conf" "$ETC_DIR/named.conf"
+    mv -f "$CONF_DIR/custom.conf" "$NAMED_CONFIG_FILE"
   elif [ -f "$ETC_DIR/custom.conf" ]; then
-    mv -f "$ETC_DIR/custom.conf" "$ETC_DIR/named.conf"
+    mv -f "$ETC_DIR/custom.conf" "$NAMED_CONFIG_FILE"
   fi
   [ -n "$KEY_RNDC" ] && echo "$KEY_RNDC" >"$CONF_DIR/secrets/rndc.key"
   [ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
@@ -286,9 +286,9 @@ __pre_execute() {
   # __is_dir_empty "$CONF_DIR" && true
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions to run after copying to /config
-  zone_files="$(find "$data_dir/zones/" -type f | wc -l)"
-  if [ $zone_files = 0 ] && [ ! -f "$DATA_DIR/primary/$HOSTNAME.zone" ]; then
-    cat <<EOF >>"$ETC_DIR/named.conf"
+  zone_files="$(find "$DATA_DIR/zones/" -type f | wc -l)"
+  if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
+    cat <<EOF >>"$ETC_DIR/zones.conf"
 #  ********** begin $HOSTNAME **********
 zone "$HOSTNAME" {
     type master;
@@ -301,7 +301,7 @@ zone "$HOSTNAME" {
 
 EOF
 
-    cat <<EOF | tee "$DATA_DIR/primary/$HOSTNAME.zone" &>/dev/null
+    cat <<EOF | tee "$VAR_DIR/primary/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $DNS_SERIAL 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
@@ -314,10 +314,10 @@ EOF
     file_name="$(basename "$dns_file")"
     domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
     if [ -f "$dns_file" ]; then
-      if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$ETC_DIR/named.conf"; then
+      if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
         if [ "$DNS_TYPE" = "secondary" ]; then
           [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
-          cat <<EOF >>"$ETC_DIR/named.conf"
+          cat <<EOF >>"$ETC_DIR/zones.conf"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
@@ -329,7 +329,7 @@ zone "$domain_name" {
 EOF
         else
           cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
-          cat <<EOF >>"$ETC_DIR/named.conf"
+          cat <<EOF >>"$ETC_DIR/zones.conf"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type master;
@@ -343,17 +343,17 @@ zone "$domain_name" {
 
 EOF
         fi
-        grep -qs "$domain_name" "$ETC_DIR/named.conf" && echo "Added $domain_name to $ETC_DIR/named.conf"
+        grep -qs "$domain_name" "$NAMED_CONFIG_FILE" "$ETC_DIR/zones.conf" && echo "Added $domain_name to $NAMED_CONFIG_FILE"
       fi
     fi
   done
-  if named-checkconf -z $ETC_DIR/named.conf &>/dev/null; then
+  if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
     echo "named-checkconf has succeeded"
   else
     echo "named-checkconf has failed:"
-    named-checkconf -z $ETC_DIR/named.conf
+    named-checkconf -z $NAMED_CONFIG_FILE
   fi
-
+  [ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # unset unneeded variables
   # unset
