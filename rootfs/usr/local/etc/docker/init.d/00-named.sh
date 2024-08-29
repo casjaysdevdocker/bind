@@ -174,7 +174,7 @@ ADD_APPLICATION_FILES=""
 ADD_APPLICATION_DIRS=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 APPLICATION_FILES="$LOG_DIR/$SERVICE_NAME.log"
-APPLICATION_DIRS="$RUN_DIR $ETC_DIR $CONF_DIR $LOG_DIR $TMP_DIR"
+APPLICATION_DIRS="$RUN_DIR $ETC_DIR $CONF_DIR $LOG_DIR $TMP_DIR $VAR_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional config dirs - will be Copied to /etc/$name
 ADDITIONAL_CONFIG_DIRS=""
@@ -217,6 +217,7 @@ __run_pre_execute_checks() {
   __banner "$pre_execute_checks_MessageST"
   # Put command to execute in parentheses
   {
+    chown -Rf "$SERVICE_USER":"$SERVICE_GROUP" $ETC_DIR $VAR_DIR $LOG_DIR
     if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
       echo "named-checkconf has succeeded"
       return 0
