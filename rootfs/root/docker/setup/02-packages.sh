@@ -30,6 +30,7 @@ exitCode=0
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
+rm -Rf /etc/tor/*
 rm -Rf /etc/bind.* /etc/named.*
 rm -Rf "/etc/bind"/* "/var/bind"/*
 rm -Rf "/etc/named"/* "/var/named"/*
