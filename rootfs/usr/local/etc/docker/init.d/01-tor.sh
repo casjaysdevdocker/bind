@@ -102,8 +102,8 @@ SERVICE_PORT="9053"
 RUNAS_USER="root" # normally root
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # User and group in which the service switches to - IE: nginx,apache,mysql,postgres
-#SERVICE_USER="tor"  # execute command as another user
-#SERVICE_GROUP="tor" # Set the service group
+SERVICE_USER="tor"  # execute command as another user
+SERVICE_GROUP="tor" # Set the service group
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set password length
 RANDOM_PASS_USER=""
