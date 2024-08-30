@@ -53,7 +53,7 @@ ARG PHP_VERSION
 ARG PHP_SERVER
 ARG SHELL_OPTS
 
-ARG PACK_LIST="bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}-fpm "
+ARG PACK_LIST="bind bind-tools bind-dnssec-root bind-plugins nginx ${PHP_VERSION}-fpm tor "
 
 ENV ENV=~/.profile
 ENV SHELL="/bin/sh"
