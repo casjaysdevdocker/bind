@@ -32,14 +32,15 @@
 __remove_extra_spaces() { sed 's/\( \)*/\1/g;s|^ ||g'; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __printf_space() {
-  pad=$(printf '%0.1s' " "{1..60})
-  padlength=$1
-  string1="$2"
-  string2="$3"
-  printf '%s' "$string1"
-  printf '%*.*s' 0 $((padlength - ${#string1} - ${#string2})) "$pad"
-  printf '%s\n' "$string2"
-  string2=${string2:1}
+  local pad=$(printf '%0.1s' " "{1..60})
+  local padlength=$1
+  local string1="$2"
+  local string2="$3"
+  local message
+  message+="$(printf '%s' "$string1") "
+  message+="$(printf '%*.*s' 0 $((padlength - ${#string1} - ${#string2})) "$pad") "
+  message+="$(printf '%s\n' "$string2") "
+  printf '%s\n' "$message"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __rm() { [ -n "$1" ] && [ -e "$1" ] && rm -Rf "${1:?}"; }
@@ -202,14 +203,16 @@ __display_user_info() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_config_etc() {
-  local COPY="no"
-  __is_dir_empty "$CONF_DIR" && COPY=yes
-  if [ ! -d "$CONF_DIR" ] || [ "$COPY" = "yes" ]; then
-    if [ -d "$ETC_DIR" ]; then
-      mkdir -p "$CONF_DIR"
-      __copy_templates "$ETC_DIR/." "$CONF_DIR/"
+  local copy="no"
+  local etc_dir="${ETC_DIR:-/etc}"
+  local conf_dir="${CONF_DIR:-/config}"
+  __is_dir_empty "$conf_dir" && copy=yes
+  if [ "$copy" = "yes" ]; then
+    if [ -d "$etc_dir" ]; then
+      mkdir -p "$conf_dir"
+      __copy_templates "$etc_dir/." "$conf_dir/"
     else
-      __copy_templates "$ETC_DIR" "$CONF_DIR"
+      __copy_templates "$etc_dir" "$conf_dir"
     fi
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -372,27 +375,29 @@ __symlink() {
 __file_copy() {
   local from="$1"
   local dest="$2"
-  if [ -n "$from" ] && [ -e "$from" ] && [ -n "$dest" ]; then
-    if [ -d "$from" ]; then
-      if cp -Rf "$from/." "$dest/" &>/dev/null; then
-        printf '%s\n' "Copied: $from > $dest"
-        return 0
+  if [ "$from" != "$dest" ]; then
+    if [ -n "$from" ] && [ -e "$from" ] && [ -n "$dest" ]; then
+      if [ -d "$from" ]; then
+        if cp -Rf "$from/." "$dest/" &>/dev/null; then
+          printf '%s\n' "Copied: $from > $dest"
+          return 0
+        else
+          printf '%s\n' "Copy failed: $from < $dest" >&2
+          return 1
+        fi
       else
-        printf '%s\n' "Copy failed: $from < $dest" >&2
-        return 1
+        if cp -Rf "$from" "$dest" &>/dev/null; then
+          printf '%s\n' "Copied: $from > $dest"
+          return 0
+        else
+          printf '%s\n' "Copy failed: $from < $dest" >&2
+          return 1
+        fi
       fi
     else
-      if cp -Rf "$from" "$dest" &>/dev/null; then
-        printf '%s\n' "Copied: $from > $dest"
-        return 0
-      else
-        printf '%s\n' "Copy failed: $from < $dest" >&2
-        return 1
-      fi
+      printf '%s\n' "$from does not exist" >&2
+      return 2
     fi
-  else
-    printf '%s\n' "$from does not exist" >&2
-    return 2
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -548,13 +553,28 @@ __create_service_user() {
   fi
   grep -qs "$create_group" "/etc/group" || exitStatus=$((exitCode + 1))
   grep -qs "$create_user" "/etc/passwd" || exitStatus=$((exitCode + 1))
-  [ $exitStatus -eq 0 ] && export WORK_DIR="${create_home_dir:-}"
-  if [ -n "$WORK_DIR" ]; then
-    [ -d "$WORK_DIR" ] || mkdir -p "$WORK_DIR"
-    [ -d "/etc/.skel" ] && cp -Rf /etc/.skel/. "$WORK_DIR/"
+  if [ $exitStatus -eq 0 ]; then
+    export WORK_DIR="${create_home_dir:-}"
+    if [ -n "$WORK_DIR" ]; then
+      [ -d "$WORK_DIR" ] || mkdir -p "$WORK_DIR"
+      [ -d "/etc/.skel" ] && cp -Rf /etc/.skel/. "$WORK_DIR/"
+    fi
+    if [ -d "/etc/sudoers.d" ] && [ ! -f "/etc/sudoers.d/$create_user" ]; then
+      echo "$create_user ALL=(ALL)   NOPASSWD: ALL" >"/etc/sudoers.d/$create_user"
+    elif [ -f "/etc/sudoers" ] && grep -qs "$create_user" "/etc/sudoers"; then
+      echo "$create_user ALL=(ALL)   NOPASSWD: ALL" >"/etc/sudoers"
+    fi
+    export SERVICE_UID="$create_uid"
+    export SERVICE_GID="$create_gid"
+    export SERVICE_USER="$create_user"
+    export SERVICE_GROUP="$create_group"
+  else
+    export USER_UID=0
+    export USER_GID=0
+    export SERVICE_USER=root
+    export SERVICE_GROUP=root
+    exitStatus=2
   fi
-  export SERVICE_UID="$create_uid" SERVICE_GID="$create_gid"
-  export SERVICE_USER="$create_user" SERVICE_GROUP="$create_group"
   return $exitStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -579,19 +599,19 @@ EOF
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __exec_command() {
-  local arg=("$@")
   local bin=""
+  local arg=("$@")
   local exitCode="0"
   local cmdExec="${arg:-}"
   local pre_exec="--login -c"
-  local shell="$(type -P bash 2>/dev/null || type -P sh 2>/dev/null)"
-  bin="$(echo "${arg[@]}" | tr ' ' '\n' | grep -v '^$' | head -n1 || echo 'bash')"
+  local shell="$(type -P bash 2>/dev/null || type -P dash 2>/dev/null || type -P ash 2>/dev/null || type -P sh 2>/dev/null)"
+  bin="$(echo "${arg[*]}" | tr ' ' '\n' | grep -v '^$' | head -n1 | sed 's| ||g' || echo 'bash')"
   prog="$(type -P "$bin" 2>/dev/null || echo "$bin")"
-  if [ -f "$prog" ] && [ -x "$prog" ]; then
+  if type -t $bin >/dev/null 2>&1; then
     echo "${exec_message:-Executing command: $cmdExec}"
     eval $shell $pre_exec "$cmdExec" || exitCode=1
     exitCode=$?
-  elif [ -f "$prog" ] && [ ! -x "$prog" ]; then
+  elif [ -f "$prog" ]; then
     echo "$prog is not executable"
     exitCode=98
   else
@@ -620,27 +640,25 @@ __start_init_scripts() {
     while :; do echo "Running: $(date)" >"/data/logs/init/keep_alive" && sleep 3600; done &
   else
     if [ -d "$init_dir" ]; then
-      chmod -Rf 755 "$init_dir/"
       [ -f "$init_dir/service.sample" ] && rm -Rf "$init_dir"/*.sample
+      chmod -Rf 755 "$init_dir"/*.sh
       for init in "$init_dir"/*.sh; do
-        if [ -f "$init" ]; then
+        if [ -x "$init" ]; then
           name="$(basename "$init")"
           service="$(printf '%s' "$name" | sed 's/^[^-]*-//;s|.sh$||g')"
           printf '# - - - executing file: %s\n' "$init"
-          "$init"
+          eval "$init" && sleep 5 || sleep 3
           retPID=$(__get_pid "$service")
           if [ -n "$retPID" ]; then
             initStatus="0"
-            sleep 20
             printf '# - - - %s has been started - pid: %s\n' "$service" "${retPID:-error}"
           else
             initStatus="1"
-            sleep 10
             printf '# - - - %s has falied to start - check log %s\n' "$service" "docker log $CONTAINER_NAME"
           fi
           echo ""
         fi
-        retstatus=$(($initStatus + $initStatus))
+        retstatus=$(($retstatus + $initStatus))
       done
     fi
   fi
@@ -757,16 +775,7 @@ EOF
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_web_health() {
   local www_dir="${1:-${WWW_ROOT_DIR:-/usr/share/httpd/default}}"
-  [ $# -eq 1 ] && [ -d "$www_dir" ] || return 1
-  if ! echo "$www_dir" | grep -q '/usr/share/httpd'; then
-    [ -d "$www_dir/health" ] || mkdir -p "$www_dir/health"
-    [ -f "$www_dir/health/index.txt" ] || echo 'OK' >"$www_dir/health/index.txt"
-    [ -f "$www_dir/health/index.json" ] || echo '{ "status": "OK" }' >"$www_dir/health/index.json"
-    __find_replace "REPLACE_CONTAINER_IP4" "${REPLACE_CONTAINER_IP4:-127.0.0.1}" "$www_dir"
-    __find_replace "REPLACE_COPYRIGHT_FOOTER" "${COPYRIGHT_FOOTER:-Copyright 1999 - $(date +'%Y')}" "$www_dir"
-    __find_replace "REPLACE_LAST_UPDATED_ON_MESSAGE" "${LAST_UPDATED_ON_MESSAGE:-$(date +'Last updated on: %Y-%m-%d at %H:%M:%S')}" "$www_dir"
-  fi
-  if [ -d "/usr/share/httpd" ]; then
+  if [ -d "$www_dir" ]; then
     __find_replace "REPLACE_CONTAINER_IP4" "${REPLACE_CONTAINER_IP4:-127.0.0.1}" "/usr/share/httpd"
     __find_replace "REPLACE_COPYRIGHT_FOOTER" "${COPYRIGHT_FOOTER:-Copyright 1999 - $(date +'%Y')}" "/usr/share/httpd"
     __find_replace "REPLACE_LAST_UPDATED_ON_MESSAGE" "${LAST_UPDATED_ON_MESSAGE:-$(date +'Last updated on: %Y-%m-%d at %H:%M:%S')}" "/usr/share/httpd"
@@ -967,16 +976,20 @@ __initialize_www_root() {
     cp -Rf "$DEFAULT_DATA_DIR/data/htdocs/." "$WWW_ROOT_DIR/" 2>/dev/null
   fi
   __initialize_web_health "$WWW_ROOT_DIR"
-  find "$WWW_ROOT_DIR" -type d -exec chmod -f 777 {} \; 2>/dev/null
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __is_htdocs_mounted() {
-  echo "$IMPORT_FROM_GIT" | grep -qE 'https://|http://|git://|ssh://' || unset IMPORT_FROM_GIT
-  if [ -n "$IMPORT_FROM_GIT" ] && [ "$(command -v "git")" ]; then
-    WWW_ROOT_DIR="${WWW_ROOT_DIR:-/data/htdocs}"
-    __is_dir_empty "$WWW_ROOT_DIR" || WWW_ROOT_DIR="/data/wwwroot"
-    echo "Importing project from $IMPORT_FROM_GIT to $WWW_ROOT_DIR"
-    git clone -q "$IMPORT_FROM_GIT" "$WWW_ROOT_DIR"
+  WWW_ROOT_DIR="${WWW_ROOT_DIR:-/data/htdocs}"
+  [ -n "$ENV_WWW_ROOT_DIR" ] && WWW_ROOT_DIR="$ENV_WWW_ROOT_DIR"
+  [ -n "$IMPORT_FROM_GIT" ] && echo "$IMPORT_FROM_GIT" | grep -qE 'https://|http://|git://|ssh://' || unset IMPORT_FROM_GIT
+  if [ -n "$IMPORT_FROM_GIT" ] && [ "$(command -v "git" 2>/dev/null)" ]; then
+    if __is_dir_empty "$WWW_ROOT_DIR"; then
+      echo "Importing project from $IMPORT_FROM_GIT to $WWW_ROOT_DIR"
+      git clone -q "$IMPORT_FROM_GIT" "$WWW_ROOT_DIR"
+    elif [ -d "$WWW_ROOT_DIR" ]; then
+      echo "Updating the project in $WWW_ROOT_DIR"
+      git -C pull -q "$WWW_ROOT_DIR"
+    fi
   elif [ -d "/app" ]; then
     WWW_ROOT_DIR="/app"
   elif [ -d "/data/htdocs/www" ]; then
@@ -987,9 +1000,8 @@ __is_htdocs_mounted() {
     WWW_ROOT_DIR="/data/htdocs"
   elif [ -d "/data/wwwroot" ]; then
     WWW_ROOT_DIR="/data/wwwroot"
-  else
-    WWW_ROOT_DIR="${ENV_WWW_ROOT_DIR:-$WWW_ROOT_DIR}"
   fi
+  [ -d "$WWW_ROOT_DIR" ] || mkdir -p "$WWW_ROOT_DIR"
   export WWW_ROOT_DIR="${WWW_ROOT_DIR:-/usr/share/httpd/default}"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1033,28 +1045,24 @@ __check_service() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __switch_to_user() {
-  if [ "$RUNAS_USER" = "roo t" ]; then
-    su_cmd() {
-      su_exec=""
-      eval "$@" || return 1
-    }
+  if [ "$RUNAS_USER" = "root" ]; then
+    su_exec=""
+    su_cmd() { eval "$@" || return 1; }
   elif [ "$(builtin type -P gosu)" ]; then
     su_exec="gosu $RUNAS_USER"
-    su_cmd() { gosu $RUNAS_USER "$@" || return 1; }
+    su_cmd() { $su_exec "$@" || return 1; }
   elif [ "$(builtin type -P runuser)" ]; then
     su_exec="runuser -u $RUNAS_USER"
-    su_cmd() { runuser -u $RUNAS_USER "$@" || return 1; }
+    su_cmd() { $su_exec "$@" || return 1; }
   elif [ "$(builtin type -P sudo)" ]; then
     su_exec="sudo -u $RUNAS_USER"
-    su_cmd() { sudo -u $RUNAS_USER "$@" || return 1; }
+    su_cmd() { $su_exec "$@" || return 1; }
   elif [ "$(builtin type -P su)" ]; then
     su_exec="su -s /bin/sh - $RUNAS_USER"
-    su_cmd() { su -s /bin/sh - $RUNAS_USER -c "$@" || return 1; }
+    su_cmd() { $su_exec -c "$@" || return 1; }
   else
-    su_cmd() {
-      su_exec=""
-      echo "Can not switch to $RUNAS_USER: attempting to run as root" && eval "$@" || return 1
-    }
+    su_exec=""
+    su_cmd() { echo "Can not switch to $RUNAS_USER: attempting to run as root" && eval "$@" || return 1; }
   fi
   export su_exec
 }
