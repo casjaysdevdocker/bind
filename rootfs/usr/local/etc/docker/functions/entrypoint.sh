@@ -145,10 +145,33 @@ __update_ssl_certs() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __certbot() {
-  local statusCode=0
-  CERTBOT_DOMAINS="${CERTBOT_DOMAINS:-$HOSTNAME}"
   [ -n "$(type -P 'certbot')" ] || return 1
+  local statusCode=0
+  local domain_list=""
+  local certbot_key_opts=""
+  local ADD_CERTBOT_DOMAINS=""
+  local options="${1:-create}"
+  local DOMAINNAME="${DOMAINNAME:-$HOSTNAME}"
+  local CERTBOT_DOMAINS="${CERTBOT_DOMAINS:-$HOSTNAME}"
+  local CERT_BOT_MAIL="${CERT_BOT_MAIL:-ssl-admin@$DOMAINNAME}"
+  local certbot_key_opts="--key-path $SSL_KEY --fullchain-path $SSL_CERT"
+  [ -d "/config/ssl/letsencrypt/$HOSTNAME" ] || mkdir -p "/config/ssl/letsencrypt/$HOSTNAME"
+  __symlink "/etc/letsencrypt" "/config/ssl/letsencrypt/$HOSTNAME"
+  is_renewal="$(find /etc/letsencrypt/renewal -type -f 2>/dev/null || false)"
+  [ -f "/config/env/ssl.sh" ] && . "/config/env/ssl.sh"
   [ -f "/config/certbot/env.sh" ] && . "/config/certbot/env.sh"
+  [ -n "$SSL_KEY" ] && mkdir -p "$(dirname "$SSL_KEY")" || { echo "The variable $SSL_KEY is not set" >&2 && return 1; }
+  [ -n "$SSL_CERT" ] && mkdir -p "$(dirname "$SSL_CERT")" || { echo "The variable $SSL_CERT is not set" >&2 && return 1; }
+  domain_list="www.$DOMAINNAME mail.$DOMAINNAME $CERTBOT_DOMAINS"
+  domain_list="$CERTBOT_DOMAINS $(echo "$domain_list" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+  [ "$CERT_BOT_ENABLED" = "true" ] || { export CERT_BOT_ENABLED="" && return 10; }
+  [ -n "$DOMAINNAME" ] || { echo "The variable DOMAINNAME is not set" >&2 && return 1; }
+  [ -n "$CERT_BOT_MAIL" ] || { echo "The variable CERT_BOT_MAIL is not set" >&2 && return 1; }
+  for domain in $$CERTBOT_DOMAINS; do
+    [ -n "$domain" ] && ADD_CERTBOT_DOMAINS+="-d $domain "
+  done
+  [ -n "$is_renewal" ] && options="renew" ADD_CERTBOT_DOMAINS=""
+  certbot_key_opts="$certbot_key_opts $ADD_CERTBOT_DOMAINS"
   if [ -f "/config/certbot/setup.sh" ]; then
     eval "/config/certbot/setup.sh"
     statusCode=$?
@@ -156,32 +179,19 @@ __certbot() {
     eval "/etc/named/certbot.sh"
     statusCode=$?
   elif [ -f "/config/certbot/certbot.conf" ]; then
-    if certbot renew -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/certbot.conf; then
-      certbot renew -n --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/certbot.conf
+    if certbot $options -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/certbot.conf $certbot_key_opts; then
+      certbot $options -n --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/certbot.conf $certbot_key_opts
     fi
     statusCode=$?
   elif [ -f "/config/named/certbot-update.conf" ]; then
-    if certbot renew -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/named/certbot-update.conf; then
-      certbot renew -n --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/named/certbot-update.conf
+    if certbot $options -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/named/certbot-update.conf $certbot_key_opts; then
+      certbot $options -n --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/named/certbot-update.conf $certbot_key_opts
     fi
     statusCode=$?
   else
-    [ -n "$SSL_KEY" ] && mkdir -p "$(dirname "$SSL_KEY")" || { echo "The variable $SSL_KEY is not set" >&2 && return 1; }
-    [ -n "$SSL_CERT" ] && mkdir -p "$(dirname "$SSL_CERT")" || { echo "The variable $SSL_CERT is not set" >&2 && return 1; }
-    local options="${1:-create}" && shift 1
-    domain_list="$DOMAINNAME www.$DOMAINNAME mail.$DOMAINNAME $CERTBOT_DOMAINS"
-    [ -f "/config/env/ssl.sh" ] && . "/config/env/ssl.sh"
-    [ "$CERT_BOT_ENABLED" = "true" ] || { export CERT_BOT_ENABLED="" && return 10; }
-    [ -n "$DOMAINNAME" ] || { echo "The variable DOMAINNAME is not set" >&2 && return 1; }
-    [ -n "$CERT_BOT_MAIL" ] || { echo "The variable CERT_BOT_MAIL is not set" >&2 && return 1; }
-    for domain in $$CERTBOT_DOMAINS; do
-      [ -n "$domain" ] && ADD_CERTBOT_DOMAINS="-d $domain $ADD_CERTBOT_DOMAINS"
-    done
+    certbot_key_opts="$certbot_key_opts --webroot ${WWW_ROOT_DIR:-/usr/share/httpd/default}"
     if [ -n "$ADD_CERTBOT_DOMAINS" ]; then
-      certbot $options --agree-tos -m $CERT_BOT_MAIL certonly \
-        --webroot "${WWW_ROOT_DIR:-/usr/share/httpd/default}" \
-        --key-path "$SSL_KEY" --fullchain-path "$SSL_CERT" \
-        $ADD_CERTBOT_DOMAINS
+      certbot $options --agree-tos -m $CERT_BOT_MAIL certonly --webroot "${WWW_ROOT_DIR:-/usr/share/httpd/default}" $certbot_key_opts
       statusCode=$?
     else
       statusCode=1
@@ -358,6 +368,8 @@ __find_replace() {
 # /config > /etc
 __copy_templates() {
   local from="$1" to="$2"
+  is_link="$(ls -la "$dest" 2>/dev/null | awk '{print $NF}')"
+  [ "$from" != "$is_link" ] || return 0
   if [ -e "$from" ] && __is_dir_empty "$to"; then
     __file_copy "$from" "$to"
   fi
@@ -367,7 +379,7 @@ __copy_templates() {
 __symlink() {
   local from="$1" to="$2"
   if [ -e "$to" ]; then
-    [ -e "$from" ] && rm -rf "$from"
+    [ -e "$from" ] && __rm "$from"
     ln -sf "$to" "$from" && echo "Created symlink to $from > $to"
   fi
 }
@@ -375,7 +387,8 @@ __symlink() {
 __file_copy() {
   local from="$1"
   local dest="$2"
-  if [ "$from" != "$dest" ]; then
+  is_link="$(ls -la "$dest" 2>/dev/null | awk '{print $NF}')"
+  if [ "$from" != "$is_link" ]; then
     if [ -n "$from" ] && [ -e "$from" ] && [ -n "$dest" ]; then
       if [ -d "$from" ]; then
         if cp -Rf "$from/." "$dest/" &>/dev/null; then
@@ -640,7 +653,7 @@ __start_init_scripts() {
     while :; do echo "Running: $(date)" >"/data/logs/init/keep_alive" && sleep 3600; done &
   else
     if [ -d "$init_dir" ]; then
-      [ -f "$init_dir/service.sample" ] && rm -Rf "$init_dir"/*.sample
+      [ -f "$init_dir/service.sample" ] && __rm "$init_dir"/*.sample
       chmod -Rf 755 "$init_dir"/*.sh
       for init in "$init_dir"/*.sh; do
         if [ -x "$init" ]; then
@@ -681,7 +694,7 @@ __setup_mta() {
   ################# sSMTP relay setup
   if [ -n "$(type -P 'ssmtp')" ]; then
     [ -d "/config/ssmtp" ] || mkdir -p "/config/ssmtp"
-    [ -f "/etc/ssmtp/ssmtp.conf" ] && rm -Rf "/etc/ssmtp/ssmtp.conf"
+    [ -f "/etc/ssmtp/ssmtp.conf" ] && __rm "/etc/ssmtp/ssmtp.conf"
     symlink_files="$(__find_file_relative "/config/ssmtp")"
     if [ ! -f "/config/ssmtp/ssmtp.conf" ]; then
       cat <<EOF | tee -p "/config/ssmtp/ssmtp.conf" >/dev/null
@@ -721,7 +734,7 @@ EOF
   elif [ -n "$(type -P 'postfix')" ]; then
     [ -d "/etc/postfix" ] || mkdir -p "/etc/postfix"
     [ -d "/config/postfix" ] || mkdir -p "/config/postfix"
-    [ -f "/etc/postfix/main.cf" ] && rm -Rf "/etc/postfix/main.cf"
+    [ -f "/etc/postfix/main.cf" ] && __rm "/etc/postfix/main.cf"
     symlink_files="$(__find_file_relative "/config/postfix")"
     if [ ! -f "/config/postfix/main.cf" ]; then
       cat <<EOF | tee -p "/config/postfix/main.cf" >/dev/null
@@ -769,7 +782,7 @@ EOF
       echo "Done setting up postfix"
     fi
   fi
-  [ -f "/root/dead.letter" ] && rm -Rf "/root/dead.letter"
+  [ -f "/root/dead.letter" ] && __rm "/root/dead.letter"
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -880,11 +893,12 @@ __initialize_system_etc() {
     for f in $files; do
       etc_file="/etc/$f"
       conf_file="/config/$f"
-      [ -f "$etc_file" ] && rm -Rf "$etc_file"
+      [ -f "$etc_file" ] && __rm "$etc_file"
       __symlink "$etc_file" "$conf_file"
-      __initialize_replace_variables "$etc_file"
     done
+
   fi
+  __initialize_replace_variables "/etc" "/config" "/data"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_custom_bin_dir() {
@@ -1067,6 +1081,44 @@ __switch_to_user() {
   export su_exec
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# usage backup "days" "hours"
+__backup() {
+  local dirs="" backup_dir backup_name backup_exclude runTime cronTime maxDays
+  test -n "$1" && test -z "${1//[0-9]/}" && maxDays="$1" && shift 1 || maxDays="7"
+  test -n "$1" && test -z "${1//[0-9]/}" && cronTime="$1" && shift 1 || cronTime=""
+  local exitCodeP=0
+  local exitStatus=0
+  local pidFile="/run/backup.pid"
+  local logDir="/data/log/backups"
+  maxDays="${BACKUP_MAX_DAYS:-$maxDays}"
+  cronTime="${BACKUP_RUN_CRON:-$cronTime}"
+  backup_dir="$BACKUP_DIR/$(date +'%y/%m')"
+  backup_name="$(date +'%d_%H-%M').tar.gz"
+  backup_exclude="/data/logs $BACKUP_DIR $BACK_EXCLUDE_DIR"
+  [ -d "/data" ] && dirs+="/data "
+  [ -d "/config" ] && dirs+="/config "
+  [ -d "$logDir" ] || mkdir -p "$logDir"
+  [ -d "$backup_dir" ] || mkdir -p "$backup_dir"
+  [ -z "$dirs" ] && echo "BACKUP_DIR is unset" >&2 && return 1
+  [ -f "$pidFile" ] && echo "A backup job is already running" >&2 && return 1
+  echo "$$" >"$pidFile"
+  echo "Starting backup in $(date)" >>"$logDir/$CONTAINER_NAME"
+  tar --exclude $backup_exclude cfvz "$backup_dir/$backup_name" $dirs 2>/dev/stderr >>"$logDir/$CONTAINER_NAME" || exitCodeP=1
+  if [ $exitCodeP -eq 0 ]; then
+    echo "Backup has completed and saved to: $backup_dir/$backup_name"
+    printf '%s\n\n' "Backup has completed on $(date)" >>"$logDir/$CONTAINER_NAME"
+  else
+    __rm "${backup_dir:?}/$backup_name"
+    echo "Backup has failed - log file saved to: $logDir/$CONTAINER_NAME" >&2
+    printf '%s\n\n' "Backup has completed on $(date)" >>"$logDir/$CONTAINER_NAME"
+    exitStatus=1
+  fi
+  [ -f "$pidFile" ] && __rm "$pidFile"
+  [ -n "$maxDays" ] && find "$BACKUP_DIR"* -mtime +$maxDays -exec rm -Rf {} \; >/dev/null 2>&1
+  [ -n "$cronTime" ] && runTime=$((cronTime * 3600)) || return $exitStatus
+  sleep $runTime && __backup "$maxDays" "$cronTime"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # set variables from function calls
 export INIT_DATE="${INIT_DATE:-$(date)}"
 export START_SERVICES="${START_SERVICES:-yes}"
@@ -1086,11 +1138,15 @@ export SSL_DIR="${SSL_DIR:-/config/ssl}"
 export SSL_CA="${SSL_CERT:-/config/ssl/ca.crt}"
 export SSL_KEY="${SSL_KEY:-/config/ssl/localhost.pem}"
 export SSL_CERT="${SSL_CERT:-/config/ssl/localhost.crt}"
-export BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
 export LOCAL_BIN_DIR="${LOCAL_BIN_DIR:-/usr/local/bin}"
 export DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
 export DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
 export DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Backup settings
+export BACKUP_MAX_DAYS="${BACKUP_MAX_DAYS:-}"
+export BACKUP_RUN_CRON="${BACKUP_RUN_CRON:-}"
+export BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CONTAINER_IP4_ADDRESS="${CONTAINER_IP4_ADDRESS:-$(__get_ip4)}"
 CONTAINER_IP6_ADDRESS="${CONTAINER_IP6_ADDRESS:-$(__get_ip6)}"
