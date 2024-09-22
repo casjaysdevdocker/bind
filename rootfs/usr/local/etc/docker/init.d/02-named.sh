@@ -339,8 +339,7 @@ zone "$domain_name" {
     also-notify { $DNS_SERVER_SECONDARY; };
     update-policy {	grant ddns-key zonesub ANY; };
     allow-transfer { any; key "backup-key"; trusted; };
-    allow-update {key "certbot."; key "dhcp-key"; trusted; key "ddns-key" };
-
+    allow-update {key "certbot."; key "dhcp-key"; trusted; key "ddns-key"; };
     file "$VAR_DIR/primary/$file_name";
 };
 #  ********** end $domain_name **********
