@@ -195,6 +195,8 @@ CMD_ENV=""
 __run_precopy() {
   # Define environment
   local hostname=${HOSTNAME}
+  # exit script if ENV has HTTP_ONLY=yes
+  [ "$HTTP_ONLY" = "yes" ] && exit 0
   # Define actions/commands
   [ -d "/data/named" ] && [ ! -d "$DATA_DIR" ] && mv -fv "/data/named" "$DATA_DIR"
   [ -d "/config/named" ] && [ ! -d "$CONF_DIR" ] && mv -fv "/config/named" "$CONF_DIR"
