@@ -18,12 +18,7 @@
 # @@sudo/root        :  no
 # @@Template         :  functions/docker-entrypoint
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# shellcheck disable=SC2016
-# shellcheck disable=SC2031
-# shellcheck disable=SC2120
-# shellcheck disable=SC2155
-# shellcheck disable=SC2199
-# shellcheck disable=SC2317
+# shellcheck disable=SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # setup debugging - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 [ -f "/config/.debug" ] && [ -z "$DEBUGGER_OPTIONS" ] && export DEBUGGER_OPTIONS="$(<"/config/.debug")" || DEBUGGER_OPTIONS="${DEBUGGER_OPTIONS:-}"
@@ -44,7 +39,7 @@ __printf_space() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __rm() { [ -n "$1" ] && [ -e "$1" ] && rm -Rf "${1:?}"; }
-__grep_test() { grep -s "$1" "$2" | grep -qwF "${3:-$1}" || return 1; }
+__grep_test() { grep -sh "$1" "$2" | grep -qwF "${3:-$1}" || return 1; }
 __netstat() { [ -f "$(type -P netstat)" ] && netstat "$@" || return 10; }
 __cd() { { [ -d "$1" ] || mkdir -p "$1"; } && builtin cd "$1" || return 1; }
 __is_in_file() { [ -e "$2" ] && grep -Rsq "$1" "$2" && return 0 || return 1; }
@@ -75,7 +70,7 @@ __clean_variables() {
   printf '%s' "$var" | grep -v '^$'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-__no_exit() { [ -f "/run/no_exit.pid" ] || exec bash -c "trap 'sleep 1;rm -Rf /run/no_exit.pid;exit 0' TERM INT;(while true; do echo $$ >/run/no_exit.pid;tail -qf /data/logs/start.log 2>/dev/null||sleep 20; done) & wait"; }
+__no_exit() { [ -f "/run/no_exit.pid" ] || exec bash -c "trap 'sleep 1;rm -Rf /run/*;/tmp/*;/data/logs/start.log;exit 0' TERM INT;(while true; do echo $$ >/run/no_exit.pid;tail -qf /data/logs/start.log 2>/dev/null||sleep 20; done) & wait"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __trim() {
   local var="${*//;/ }"
@@ -146,37 +141,41 @@ __update_ssl_certs() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __certbot() {
   [ -n "$(type -P 'certbot')" ] || return 1
+  local options="$1"
   local statusCode=0
   local domain_list=""
   local certbot_key_opts=""
   local ADD_CERTBOT_DOMAINS=""
-  local options="${1:-create}"
-  local DOMAINNAME="${DOMAINNAME:-$HOSTNAME}"
   local CERTBOT_DOMAINS="${CERTBOT_DOMAINS:-$HOSTNAME}"
-  local CERT_BOT_MAIL="${CERT_BOT_MAIL:-ssl-admin@$DOMAINNAME}"
+  local CERT_BOT_MAIL="${CERT_BOT_MAIL:-ssl-admin@$CERTBOT_DOMAINS}"
   local certbot_key_opts="--key-path $SSL_KEY --fullchain-path $SSL_CERT"
-  [ -d "/config/ssl/letsencrypt/$HOSTNAME" ] || mkdir -p "/config/ssl/letsencrypt/$HOSTNAME"
-  __symlink "/etc/letsencrypt" "/config/ssl/letsencrypt/$HOSTNAME"
+  mkdir -p "/config/letsencrypt"
+  __symlink "/etc/letsencrypt" "/config/letsencrypt"
   is_renewal="$(find /etc/letsencrypt/renewal -type -f 2>/dev/null || false)"
   [ -f "/config/env/ssl.sh" ] && . "/config/env/ssl.sh"
   [ -f "/config/certbot/env.sh" ] && . "/config/certbot/env.sh"
-  [ -n "$SSL_KEY" ] && mkdir -p "$(dirname "$SSL_KEY")" || { echo "The variable $SSL_KEY is not set" >&2 && return 1; }
-  [ -n "$SSL_CERT" ] && mkdir -p "$(dirname "$SSL_CERT")" || { echo "The variable $SSL_CERT is not set" >&2 && return 1; }
-  domain_list="www.$DOMAINNAME mail.$DOMAINNAME $CERTBOT_DOMAINS"
-  domain_list="$CERTBOT_DOMAINS $(echo "$domain_list" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+  [ -n "$SSL_KEY" ] && { mkdir -p "$(dirname "$SSL_KEY")" || true; } || { echo "The variable $SSL_KEY is not set" >&2 && return 1; }
+  [ -n "$SSL_CERT" ] && { mkdir -p "$(dirname "$SSL_CERT")" || true; } || { echo "The variable $SSL_CERT is not set" >&2 && return 1; }
+  domain_list="$CERTBOT_DOMAINS www.$CERTBOT_DOMAINS mail.$CERTBOT_DOMAINS"
+  domain_list="$(echo "$domain_list" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
   [ "$CERT_BOT_ENABLED" = "true" ] || { export CERT_BOT_ENABLED="" && return 10; }
-  [ -n "$DOMAINNAME" ] || { echo "The variable DOMAINNAME is not set" >&2 && return 1; }
   [ -n "$CERT_BOT_MAIL" ] || { echo "The variable CERT_BOT_MAIL is not set" >&2 && return 1; }
+  [ -n "$CERTBOT_DOMAINS" ] || { echo "The variable CERTBOT_DOMAINS is not set" >&2 && return 1; }
   for domain in $$CERTBOT_DOMAINS; do
     [ -n "$domain" ] && ADD_CERTBOT_DOMAINS+="-d $domain "
   done
-  [ -n "$is_renewal" ] && options="renew" ADD_CERTBOT_DOMAINS=""
+  [ -n "$is_renewal" ] && options="renew" ADD_CERTBOT_DOMAINS="" || options="certonly"
   certbot_key_opts="$certbot_key_opts $ADD_CERTBOT_DOMAINS"
   if [ -f "/config/certbot/setup.sh" ]; then
     eval "/config/certbot/setup.sh"
     statusCode=$?
   elif [ -f "/etc/named/certbot.sh" ]; then
     eval "/etc/named/certbot.sh"
+    statusCode=$?
+  elif [ -f "/config/certbot/dns.conf" ]; then
+    if certbot $options -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/dns.conf $certbot_key_opts; then
+      certbot $options -n --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/dns.conf $certbot_key_opts
+    fi
     statusCode=$?
   elif [ -f "/config/certbot/certbot.conf" ]; then
     if certbot $options -n --dry-run --agree-tos --expand --dns-rfc2136 --dns-rfc2136-credentials /config/certbot/certbot.conf $certbot_key_opts; then
@@ -230,7 +229,7 @@ __init_config_etc() {
 }
 __create_ssl_cert() {
   local SSL_DIR="${SSL_DIR:-/etc/ssl}"
-  if ! __certbot create; then
+  if ! __certbot certonly; then
     [ -f "/config/env/ssl.sh" ] && . "/config/env/ssl.sh"
     [ -n "$SSL_DIR" ] || { echo "SSL_DIR is unset" && return 1; }
     [ -d "$SSL_DIR" ] || mkdir -p "$SSL_DIR"
@@ -289,8 +288,9 @@ __init_mysql() {
   local etc_dir="${home:-/etc/${1:-mysql}}"
   local db_user="${SERVICE_USER:-mysql}"
   local conf_dir="/config/${1:-mysql}"
+  local user_name="${MARIADB_USER:-root}"
   local user_pass="${MARIADB_PASSWORD:-$MARIADB_ROOT_PASSWORD}"
-  local user_db="${MARIADB_DATABASE}" user_name="${MARIADB_USER:-root}"
+  local user_db="${MARIADB_DATABASE}"
   local root_pass="$MARIADB_ROOT_PASSWORD"
   local mysqld_bin="$(type -P 'mysqld')"
   return 0
@@ -298,22 +298,22 @@ __init_mysql() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_mongodb() {
   local home="${MONGODB_CONFIG_FILE:-$(__find_mongodb_conf)}"
-  local user_pass="${MONGO_INITDB_ROOT_PASSWORD:-$_ROOT_PASSWORD}"
   local user_name="${INITDB_ROOT_USERNAME:-root}"
+  local user_pass="${MONGO_INITDB_ROOT_PASSWORD:-$_ROOT_PASSWORD}"
   return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_postgres() {
   local home="${PGSQL_CONFIG_FILE:-$(__find_pgsql_conf)}"
-  local user_pass="${POSTGRES_PASSWORD:-$POSTGRES_ROOT_PASSWORD}"
   local user_name="${POSTGRES_USER:-root}"
+  local user_pass="${POSTGRES_PASSWORD:-$POSTGRES_ROOT_PASSWORD}"
   return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_couchdb() {
   local home="${COUCHDB_CONFIG_FILE:-$(__find_couchdb_conf)}"
-  local user_pass="${COUCHDB_PASSWORD:-$SET_RANDOM_PASS}"
   local user_name="${COUCHDB_USER:-root}"
+  local user_pass="${COUCHDB_PASSWORD:-$SET_RANDOM_PASS}"
   return
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -418,7 +418,7 @@ __file_copy() {
 __generate_random_uids() {
   local set_random_uid="$(seq 3000 5000 | sort -R | head -n 1)"
   while :; do
-    if grep -qs "x:.*:$set_random_uid:" "/etc/group" && ! grep -sq "x:$set_random_uid:.*:" "/etc/passwd"; then
+    if grep -qs "x:.*:$set_random_uid:" "/etc/group" && ! grep -shq "x:$set_random_uid:.*:" "/etc/passwd"; then
       set_random_uid=$((set_random_uid + 1))
     else
       echo "$set_random_uid"
@@ -432,6 +432,7 @@ __setup_directories() {
   APPLICATION_FILES="${APPLICATION_FILES//,/ }"
   ADD_APPLICATION_DIRS="${ADD_APPLICATION_DIRS//,/ }"
   ADD_APPLICATION_FILES="${ADD_APPLICATION_FILES//,/ }"
+  [ -n "$ENV_WWW_ROOT_DIR" ] && export WWW_ROOT_DIR="$ENV_WWW_ROOT_DIR"
   # Setup WWW_ROOT_DIR
   if [ "$IS_WEB_SERVER" = "yes" ]; then
     APPLICATION_DIRS="$APPLICATION_DIRS $WWW_ROOT_DIR"
@@ -465,7 +466,7 @@ __fix_permissions() {
   change_group="${2:-${SERVICE_GROUP:-$change_user}}"
   [ -n "$RUNAS_USER" ] && [ "$RUNAS_USER" != "root" ] && change_user="$RUNAS_USER" && change_group="$change_user"
   if [ -n "$change_user" ]; then
-    if grep -sq "^$change_user:" "/etc/passwd"; then
+    if grep -shq "^$change_user:" "/etc/passwd"; then
       for permissions in $ADD_APPLICATION_DIRS $APPLICATION_DIRS; do
         if [ -n "$permissions" ] && [ -e "$permissions" ]; then
           (chown -Rf $change_user "$permissions" && echo "changed ownership on $permissions to user:$change_user") 2>/dev/stderr | tee -p -a "/data/logs/init.txt"
@@ -474,7 +475,7 @@ __fix_permissions() {
     fi
   fi
   if [ -n "$change_group" ]; then
-    if grep -sq "^$change_group:" "/etc/group"; then
+    if grep -shq "^$change_group:" "/etc/group"; then
       for permissions in $ADD_APPLICATION_DIRS $APPLICATION_DIRS; do
         if [ -n "$permissions" ] && [ -e "$permissions" ]; then
           (chgrp -Rf $change_group "$permissions" && echo "changed group ownership on $permissions to group $change_group") 2>/dev/stderr | tee -p -a "/data/logs/init.txt"
@@ -514,9 +515,9 @@ __set_user_group_id() {
   local random_id="$(__generate_random_uids)"
   set_uid="$(__get_uid "$set_user" || echo "$set_uid")"
   set_gid="$(__get_gid "$set_user" || echo "$set_gid")"
-  grep -sq "^$create_user:" "/etc/passwd" "/etc/group" || return 0
+  grep -shq "^$create_user:" "/etc/passwd" "/etc/group" || return 0
   [ -n "$set_user" ] && [ "$set_user" != "root" ] || return
-  if grep -sq "^$set_user:" "/etc/passwd" "/etc/group"; then
+  if grep -shq "^$set_user:" "/etc/passwd" "/etc/group"; then
     if __check_for_guid "$set_gid"; then
       groupmod -g "${set_gid}" $set_user 2>/dev/stderr | tee -p -a "/data/logs/init.txt" >/dev/null && chown -Rf ":$set_gid"
     fi
@@ -537,7 +538,7 @@ __create_service_user() {
   local create_gid="${5:-${SERVICE_GID:-$USER_GID}}"
   local random_id="$(__generate_random_uids)"
   local create_home_dir="${create_home_dir:-/home/$create_user}"
-  grep -sq "^$create_user:" "/etc/passwd" && grep -sq "^$create_group:" "/etc/group" && return
+  grep -shq "^$create_user:" "/etc/passwd" && grep -sh "^$create_group:" "/etc/group" && return
   [ "$create_user" = "root" ] && [ "$create_group" = "root" ] && return 0
   if [ "$RUNAS_USER" != "root" ] && [ "$RUNAS_USER" != "" ]; then
     create_user="$RUNAS_USER"
@@ -876,8 +877,10 @@ __initialize_db_users() {
   db_normal_pass="${DATABASE_PASS_NORMAL:-$user_pass}"
   db_admin_user="${DATABASE_USER_ROOT:-$root_user_name}"
   db_admin_pass="${DATABASE_PASS_ROOT:-$root_user_pass}"
-  export DATABASE_USER="$db_normal_user" DATABASE_PASSWORD="$db_normal_pass"
-  export DATABASE_ROOT_USER="$db_admin_user" DATABASE_ROOT_PASSWORD="$db_admin_pass"
+  export DATABASE_USER_NORMAL="$db_normal_user"
+  export DATABASE_PASS_NORMAL="$db_normal_pass"
+  export DATABASE_USER_ROOT="$db_admin_user"
+  export DATABASE_PASS_ROOT="$db_admin_pass"
   export db_normal_user db_normal_pass db_admin_user db_admin_pass
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1027,21 +1030,30 @@ __is_htdocs_mounted() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_ssl_certs() {
-  [ -d "$SSL_DIR" ] || mkdir -p "$SSL_DIR"
-  if [ "$SSL_ENABLED" = "true" ] || [ "$SSL_ENABLED" = "yes" ]; then
-    if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
-      SSL_ENABLED="true"
-      if [ -n "$SSL_CA" ] && [ -f "$SSL_CA" ]; then
-        mkdir -p "$SSL_DIR/certs"
-        cat "$SSL_CA" >>"/etc/ssl/certs/ca-certificates.crt"
-        cp -Rf "/." "$SSL_DIR/"
+  [ "$SSL_ENABLED" = "yes" ] && __certbot
+  if [ -d "/config/letsencrypt" ]; then
+    mkdir -p "/etc/letsencrypt"
+    __file_copy "/config/letsencrypt" "/etc/letsencrypt/"
+  elif [ -d "/etc/letsencrypt" ] && [ ! -d "/config/letsencrypt" ]; then
+    mkdir -p "/config/letsencrypt"
+    __file_copy "/etc/letsencrypt" "/config/letsencrypt/"
+  else
+    [ -d "$SSL_DIR" ] || mkdir -p "$SSL_DIR"
+    if [ "$SSL_ENABLED" = "true" ] || [ "$SSL_ENABLED" = "yes" ]; then
+      if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
+        SSL_ENABLED="true"
+        if [ -n "$SSL_CA" ] && [ -f "$SSL_CA" ]; then
+          mkdir -p "$SSL_DIR/certs"
+          cat "$SSL_CA" >>"/etc/ssl/certs/ca-certificates.crt"
+          cp -Rf "/." "$SSL_DIR/"
+        fi
+      else
+        [ -d "$SSL_DIR" ] || mkdir -p "$SSL_DIR"
+        __create_ssl_cert
       fi
-    else
-      [ -d "$SSL_DIR" ] || mkdir -p "$SSL_DIR"
-      __create_ssl_cert
     fi
-    type update-ca-certificates &>/dev/null && update-ca-certificates &>/dev/null
   fi
+  type update-ca-certificates &>/dev/null && update-ca-certificates &>/dev/null
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __start_php_dev_server() {
@@ -1159,6 +1171,7 @@ CONTAINER_IP4_ADDRESS="${CONTAINER_IP4_ADDRESS:-$(__get_ip4)}"
 CONTAINER_IP6_ADDRESS="${CONTAINER_IP6_ADDRESS:-$(__get_ip6)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional
+export WORK_DIR="${ENV_WORK_DIR:-$WORK_DIR}"
 export SET_RANDOM_PASS="${SET_RANDOM_PASS:-$(__random_password 16)}"
 export PHP_INI_DIR="${PHP_INI_DIR:-$(__find_php_ini)}"
 export PHP_BIN_DIR="${PHP_BIN_DIR:-$(__find_php_bin)}"
@@ -1174,11 +1187,6 @@ export ENTRYPOINT_PID_FILE="${ENTRYPOINT_PID_FILE:-/run/init.d/entrypoint.pid}"
 export ENTRYPOINT_INIT_FILE="${ENTRYPOINT_INIT_FILE:-/config/.entrypoint.done}"
 export ENTRYPOINT_DATA_INIT_FILE="${ENTRYPOINT_DATA_INIT_FILE:-/data/.docker_has_run}"
 export ENTRYPOINT_CONFIG_INIT_FILE="${ENTRYPOINT_CONFIG_INIT_FILE:-/config/.docker_has_run}"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-SERVER_ADMIN_URL="/admin/$SERVICE_NAME"
-[ -d "/usr/share/mongodb" ] && MONGOADMIN_WWW_ROOT="/usr/share/mongodb"
-[ -d "/usr/share/phpmyadmin" ] && PHPMYADMIN_WWW_ROOT="/usr/share/phpmyadmin"
-[ -d "/usr/share/phppgadmin" ] && PHPPGADMIN_WWW_ROOT="/usr/share/phppgadmin"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # is already Initialized
 [ -z "$DATA_DIR_INITIALIZED" ] && { [ -f "$ENTRYPOINT_DATA_INIT_FILE" ] && DATA_DIR_INITIALIZED="true" || DATA_DIR_INITIALIZED="false"; }
