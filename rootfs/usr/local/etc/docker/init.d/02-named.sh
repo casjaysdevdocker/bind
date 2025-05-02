@@ -63,6 +63,9 @@ __dhcp_key() { grep -s 'key "dhcp-key" ' /etc/named.conf | grep -v 'KEY_DHCP' | 
 __certbot_key() { grep -s 'key "certbot" ' /etc/named.conf | grep -v 'KEY_CERTBOT' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
 __backup_key() { grep -s 'key "backup-key" ' /etc/named.conf | grep -v 'KEY_BACKUP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
 __tsig_key() { tsig-keygen -a hmac-${1:-sha512} | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'I665bFnjoPMB9EmEUl5uZ+o7e4ryM02irerkCkLJiSPJJYJBvBHSXCauNn44zY2C318DSWRcCx+tf8WESYwgKQ=='; }
+__check_dig() { dig "${1:-localhost}" "${2:-A}" | grep 'IN' | grep '[0-9][0-9]' | sed 's|.*A||g' | sed "s/^[ \t]*//" || return 2; }
+__get_dns_record() { grep '^@' "/data/bind/zones/$1.org.zone" | grep 'IN' | grep ' A ' | sed 's|.*A||g;s|;.*||g;s/^[ \t]*//' || return 2; }
+#__records_match() {}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Script to execute
 START_SCRIPT="/usr/local/etc/docker/exec/$SERVICE_NAME"
