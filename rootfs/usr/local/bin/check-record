@@ -1,0 +1,69 @@
+#!/usr/bin/env sh
+# shellcheck shell=sh
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##@Version           :  202505201013-git
+# @@Author           :  Jason Hempstead
+# @@Contact          :  jason@casjaysdev.pro
+# @@License          :  LICENSE.md
+# @@ReadME           :  check-record --help
+# @@Copyright        :  Copyright: (c) 2025 Jason Hempstead, Casjays Developments
+# @@Created          :  Tuesday, May 20, 2025 10:13 EDT
+# @@File             :  check-record
+# @@Description      :
+# @@Changelog        :  New script
+# @@TODO             :  Better documentation
+# @@Other            :
+# @@Resource         :
+# @@Terminal App     :  no
+# @@sudo/root        :  no
+# @@Template         :  shell/sh
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# shellcheck disable=SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+APPNAME="$(basename -- "$0" 2>/dev/null)"
+VERSION="202505201013-git"
+RUN_USER="$USER"
+SET_UID="$(id -u)"
+SCRIPT_SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+CHECK_RECORD_CWD="$(realpath "$PWD")"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# colorization
+if [ "$SHOW_RAW" = "true" ]; then
+  __printf_color() { printf '%b' "$1\n" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+else
+  __printf_color() { { [ -z "$2" ] || DEFAULT_COLOR=$2; } && printf "%b" "$(tput setaf "$DEFAULT_COLOR" 2>/dev/null)" "$1\n" "$(tput sgr0 2>/dev/null)"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# check for command
+__cmd_exists() { which $1 >/dev/null 2>&1 || return 1; }
+__function_exists() { builtin type $1 >/dev/null 2>&1 || return 1; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define variables
+DEFAULT_COLOR="254"
+CHECK_RECORD_EXIT_STATUS=0
+CHECK_RECORD_RECORD="${2:-A}"
+CHECK_RECORD_DOMAIN="${1:-localhost}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Main application
+__cmd_exists dig || exit 10
+if dig @1.1.1.1 "$CHECK_RECORD_DOMAIN" "$CHECK_RECORD_RECORD" | grep 'IN' | grep '[0-9][0-9]' | sed 's|.*A||g' | sed "s/^[ \t]*//"; then
+  CHECK_RECORD_EXIT_STATUS=0
+  __printf_color "The records for $CHECK_RECORD_DOMAIN have delegated" 2
+elif dig @127.0.0.1 "$CHECK_RECORD_DOMAIN" "$CHECK_RECORD_RECORD" | grep 'IN' | grep '[0-9][0-9]' | sed 's|.*A||g' | sed "s/^[ \t]*//"; then
+  CHECK_RECORD_EXIT_STATUS=1
+  __printf_color "The records for $CHECK_RECORD_DOMAIN are working but have not delegated yet" 6
+else
+  CHECK_RECORD_EXIT_STATUS=2
+  __printf_color "The record for $CHECK_RECORD_DOMAIN does not exist" 1
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# End application
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# lets exit with code
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+exit $CHECK_RECORD_EXIT_STATUS
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# ex: ts=2 sw=2 et filetype=sh

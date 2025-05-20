@@ -12,28 +12,12 @@ CookieAuthFile REPLACE_RUN_DIR/control.authcookie
 Log debug file REPLACE_LOG_DIR/debug.log
 Log notice file REPLACE_LOG_DIR/notices.log
 
-##### This section is just for location-hidden services
-HiddenServiceDir REPLACE_DATA_DIR/hidden_service/default
-HiddenServicePort 80 127.0.0.1:80
-
 ##### Server
-ControlPort localhost:9051
-SOCKSPort localhost:9050
-HTTPTunnelPort localhost:9080
+SOCKSPort 127.0.0.1:9050
+ControlPort 127.0.0.1:9051
+HTTPTunnelPort 127.0.0.1:9080
 
 ##### dns forwarder
-DNSPort localhost:9053
+DNSPort 127.0.0.1:9053
 AutomapHostsOnResolve 1
 AutomapHostsSuffixes .exit,.onion
-
-##### This section is just for relays
-#Nickname whateveryouwant
-#ContactInfo tor-admin@example.com
-#ORPort 443
-#Exitpolicy reject *:*
-#AccountingMax 100 GBytes
-#AccountingStart month 1 00:00
-#RelayBandwidthRate 5120 KBytes
-#RelayBandwidthBurst 10240 KBytes
-#DisableDebuggerAttachment 0
-#HardwareAccel 1

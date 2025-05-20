@@ -64,7 +64,7 @@ __certbot_key() { grep -s 'key "certbot" ' /etc/named.conf | grep -v 'KEY_CERTBO
 __backup_key() { grep -s 'key "backup-key" ' /etc/named.conf | grep -v 'KEY_BACKUP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
 __tsig_key() { tsig-keygen -a hmac-${1:-sha512} | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'I665bFnjoPMB9EmEUl5uZ+o7e4ryM02irerkCkLJiSPJJYJBvBHSXCauNn44zY2C318DSWRcCx+tf8WESYwgKQ=='; }
 __check_dig() { dig "${1:-localhost}" "${2:-A}" | grep 'IN' | grep '[0-9][0-9]' | sed 's|.*A||g' | sed "s/^[ \t]*//" || return 2; }
-__get_dns_record() { grep '^@' "/data/bind/zones/$1.org.zone" | grep 'IN' | grep ' A ' | sed 's|.*A||g;s|;.*||g;s/^[ \t]*//' || return 2; }
+__get_dns_record() { grep '^@' "/data/bind/zones/$1.zone" | grep 'IN' | grep ' A ' | sed 's|.*A||g;s|;.*||g;s/^[ \t]*//' || return 2; }
 #__records_match() {}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Script to execute
@@ -161,11 +161,11 @@ user_pass="${NAMED_USER_PASS_WORD:-}" # normal user password
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional predefined variables
 DNS_SERIAL="$(date +'%Y%m%d%S')"
+DNS_ZONE_FILE="$ETC_DIR/zones.conf"
 KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key sha512)}"
 KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key sha512)}"
 KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key sha512)}"
 KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
-DNS_ZONE_FILE="$ETC_DIR/zones.conf"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
 DNS_TYPE="${DNS_TYPE:-primary}"

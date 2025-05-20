@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+# shellcheck shell=sh
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##@Version           :  202505201007-git
+# @@Author           :  Jason Hempstead
+# @@Contact          :  jason@casjaysdev.pro
+# @@License          :  LICENSE.md
+# @@ReadME           :  get_dns_record --help
+# @@Copyright        :  Copyright: (c) 2025 Jason Hempstead, Casjays Developments
+# @@Created          :  Tuesday, May 20, 2025 10:07 EDT
+# @@File             :  get_dns_record
+# @@Description      :
+# @@Changelog        :  New script
+# @@TODO             :  Better documentation
+# @@Other            :
+# @@Resource         :
+# @@Terminal App     :  no
+# @@sudo/root        :  no
+# @@Template         :  shell/sh
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# shellcheck disable=SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+APPNAME="$(basename -- "$0" 2>/dev/null)"
+VERSION="202505201007-git"
+RUN_USER="$USER"
+SET_UID="$(id -u)"
+SCRIPT_SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+GET_DNS_RECORD_CWD="$(realpath "$PWD")"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# colorization
+if [ "$SHOW_RAW" = "true" ]; then
+  __printf_color() { printf '%b' "$1\n" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+else
+  __printf_color() { { [ -z "$2" ] || DEFAULT_COLOR=$2; } && printf "%b" "$(tput setaf "$DEFAULT_COLOR" 2>/dev/null)" "$1\n" "$(tput sgr0 2>/dev/null)"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# check for command
+__cmd_exists() { which $1 >/dev/null 2>&1 || return 1; }
+__function_exists() { builtin type $1 >/dev/null 2>&1 || return 1; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define variables
+DEFAULT_COLOR="254"
+GET_DNS_RECORD_EXIT_STATUS=0
+GET_DNS_RECORD_DOMAIN_NAME="$1"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Main application
+[ -n "$GET_DNS_RECORD_DOMAIN_NAME" ] || exit 2
+grep '^@' "/data/bind/zones/$GET_DNS_RECORD_DOMAIN_NAME.zone" | grep 'IN' | grep ' A ' | sed 's|.*A||g;s|;.*||g;s/^[ \t]*//' || exit 2
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# End application
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# lets exit with code
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+exit $GET_DNS_RECORD_EXIT_STATUS
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# ex: ts=2 sw=2 et filetype=sh
