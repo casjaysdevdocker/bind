@@ -364,7 +364,7 @@ EOF
       domain_name="${dns_name%.*}"
       file_name="$(basename "$dns_file")"
       main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' || echo "masters { $DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY"); };"
-      cat <<EOF | sed 's|masters /d' >>"$DNS_ZONE_FILE"
+      cat <<EOF | sed 's|masters /d' >>"$TMP_DIR/$file_name"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
@@ -374,6 +374,13 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
+
+      if named-checkzone -q $domain_name "$TMP_DIR/$file_name"; then
+        cat "$TMP_DIR/$file_name" >>"$DNS_ZONE_FILE"
+      else
+        echo "Checking $domain_name has failed" >&2
+      fi
+      rm "$TMP_DIR/$file_name"
     done
   fi
   [ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
