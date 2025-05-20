@@ -361,7 +361,7 @@ EOF
     done
   fi
 
-  if [ -d "$VAR_DIR/remote" ]; then
+  if [ -d "$DATA_DIR/remote" ]; then
     for dns_file in "$DATA_DIR/remote"/*; do
       file_name="$(basename "$dns_file")"
       domain_name="$(basename "${dns_file%.*}")"
