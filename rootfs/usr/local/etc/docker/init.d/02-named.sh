@@ -380,10 +380,10 @@ EOF
 
         if named-checkzone -q $domain_name "$TMP_DIR/$file_name"; then
           cat "$TMP_DIR/$file_name" >>"$DNS_ZONE_FILE"
+          rm "$TMP_DIR/$file_name"
         else
           echo "Checking zone $domain_name has failed" | tee -a "$LOG_DIR/init.txt" >&2
         fi
-        rm "$TMP_DIR/$file_name"
         grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
       else
         echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
