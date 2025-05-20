@@ -363,24 +363,15 @@ EOF
 
   if [ -d "$DATA_DIR/remote" ]; then
     for dns_file in "$DATA_DIR/remote"/*; do
-      file_name="$(basename "$dns_file")"
-      domain_name="$(basename "${dns_file%.*}")"
-      main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' | grep '^' || echo 'masters { '${DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY}'; };')"
-      if [ -n "$domain_name" ]; then
-        cat <<EOF | sed '/masters.*/d' >>"$DNS_ZONE_FILE"
-#  ********** begin $domain_name **********
-zone "$domain_name" {
-    type slave;
-    $main_server
-    file "$VAR_DIR/secondary/$file_name";
-};
-#  ********** end $domain_name **********
-
-EOF
-
-        grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
-      else
-        echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
+      if [ -s "$dns_file" ]; then
+        file_name="$(basename "$dns_file")"
+        domain_name="$(basename "${dns_file%.*}")"
+        if [ -n "$domain_name" ]; then
+          cat "$dns_file" | sed 's|REPLACE_VAR_DIR|'$VAR_DIR'|g' >>"$DNS_ZONE_FILE"
+          grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
+        else
+          echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
+        fi
       fi
     done
   fi
