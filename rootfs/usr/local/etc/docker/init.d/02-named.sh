@@ -365,7 +365,7 @@ EOF
     for dns_file in "$DATA_DIR/remote"/*; do
       file_name="$(basename "$dns_file")"
       domain_name="$(basename "${dns_file%.*}")"
-      main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' || echo 'masters { '${DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY}'; };')"
+      main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' | grep '^' || echo 'masters { '${DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY}'; };')"
       if [ -n "$domain_name" ]; then
         cat <<EOF | sed '/masters.*/d' >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
