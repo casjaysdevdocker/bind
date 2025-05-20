@@ -210,6 +210,7 @@ __run_precopy() {
 __execute_prerun() {
   # Define environment
   local hostname=${HOSTNAME}
+  printf '\n%s\n' "$(date)" >>"$LOG_DIR/init.txt"
   # Define actions/commands
 
 }
@@ -377,9 +378,9 @@ EOF
 
       if named-checkzone -q $domain_name "$TMP_DIR/$file_name"; then
         cat "$TMP_DIR/$file_name" >>"$DNS_ZONE_FILE"
-        echo "Added $domain_name to $DNS_ZONE_FILE"
+        echo "Added $domain_name to $DNS_ZONE_FILE" | tee -a "$LOG_DIR/init.txt"
       else
-        echo "Checking $domain_name has failed" >&2
+        echo "Checking $domain_name has failed" | tee -a "$LOG_DIR/init.txt" >&2
       fi
       rm "$TMP_DIR/$file_name"
     done

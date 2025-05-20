@@ -28,6 +28,8 @@ exitCode=0
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Predifined actions
 [ -d "/tmp" ] && rm -Rf "/tmp"/*
+[ -d "/var/bind" ] && rm -Rf "/var/bind"/*
+[ -d "/var/named" ] && rm -Rf "/var/named"/*
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
 
