@@ -367,7 +367,7 @@ EOF
       domain_name="$(basename "${dns_file%.*}")"
       main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' || echo "masters { $DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY"); };"
       if [ -n "$domain_name" ]; then
-        cat <<EOF | sed 's|masters /d' >>"$TMP_DIR/$file_name"
+        cat <<EOF | sed 's/masters .*/d' >>"$TMP_DIR/$file_name"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
