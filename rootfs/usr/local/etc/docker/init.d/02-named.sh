@@ -283,6 +283,7 @@ __update_conf_files() {
   [ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
   [ -n "$KEY_BACKUP" ] && echo "$KEY_BACKUP" >"$CONF_DIR/secrets/backup.key"
   [ -n "$KEY_CERTBOT" ] && echo "$KEY_CERTBOT" >"$CONF_DIR/secrets/certbot.key"
+  [ -f "$VAR_DIR/root.cache" ] || cp -Rf "/usr/local/share/bind/data/root.cache" "$VAR_DIR/root.cache"
   # exit function
   return $exitCode
 }
