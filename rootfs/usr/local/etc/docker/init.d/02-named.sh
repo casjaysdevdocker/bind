@@ -367,8 +367,7 @@ EOF
       domain_name="$(basename "${dns_file%.*}")"
       main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' || echo "masters { $DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY"); };"
       if [ -n "$domain_name" ]; then
-        echo $domain_name
-        cat <<EOF | sed '/masters.*/d' >"$TMP_DIR/$file_name"
+        cat <<EOF | sed '/masters.*/d' >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
@@ -379,12 +378,6 @@ zone "$domain_name" {
 
 EOF
 
-        if named-checkzone -q $domain_name "$TMP_DIR/$file_name"; then
-          cat "$TMP_DIR/$file_name" >>"$DNS_ZONE_FILE"
-          rm "$TMP_DIR/$file_name"
-        else
-          echo "Checking zone $domain_name has failed" | tee -a "$LOG_DIR/init.txt" >&2
-        fi
         grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
       else
         echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
