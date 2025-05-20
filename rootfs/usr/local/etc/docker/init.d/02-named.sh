@@ -377,6 +377,7 @@ EOF
 
       if named-checkzone -q $domain_name "$TMP_DIR/$file_name"; then
         cat "$TMP_DIR/$file_name" >>"$DNS_ZONE_FILE"
+        echo "Added $domain_name to $DNS_ZONE_FILE"
       else
         echo "Checking $domain_name has failed" >&2
       fi
