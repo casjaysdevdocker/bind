@@ -169,6 +169,7 @@ DNS_ZONE_FILE="$ETC_DIR/zones.conf"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
 DNS_TYPE="${DNS_TYPE:-primary}"
+DNS_REMOTE_SERVER="${DNS_REMOTE_SERVER:-}"
 DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-127.0.0.1}"
 DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-127.0.0.1}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -289,6 +290,7 @@ __update_conf_files() {
 __pre_execute() {
   local exitCode=0                                               # default exit code
   local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
+  local remote_env="$(env | grep "$DNS_REMOTE_SERVER_")"
   # execute if directories is empty
   # __is_dir_empty "$CONF_DIR" && true
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -317,14 +319,15 @@ $HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 EOF
   fi
   #
-  for dns_file in "$DATA_DIR/zones"/*; do
-    file_name="$(basename "$dns_file")"
-    domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
-    if [ -f "$dns_file" ]; then
-      if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
-        if [ "$DNS_TYPE" = "secondary" ]; then
-          [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
-          cat <<EOF >>"$DNS_ZONE_FILE"
+  if [ -d "$DATA_DIR/zones" ]; then
+    for dns_file in "$DATA_DIR/zones"/*; do
+      file_name="$(basename "$dns_file")"
+      domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
+      if [ -f "$dns_file" ]; then
+        if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
+          if [ "$DNS_TYPE" = "secondary" ]; then
+            [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
+            cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
@@ -334,9 +337,9 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
-        else
-          cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
-          cat <<EOF >>"$DNS_ZONE_FILE"
+          else
+            cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
+            cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type master;
@@ -349,12 +352,32 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
+          fi
+          grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
         fi
-        grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
       fi
-    fi
-  done
+    done
+  fi
+
+  if [ -d "$VAR_DIR/remote" ]; then
+    for dns_file in "$DATA_DIR/remote"/*; do
+      domain_name="${dns_name%.*}"
+      file_name="$(basename "$dns_file")"
+      main_server="$(grep -sh 'masters ' "$dns_file" | sed 's/^[ \t]*//' || echo "masters { $DNS_REMOTE_SERVER:-$DNS_SERVER_PRIMARY"); };"
+      cat <<EOF | sed 's|masters /d' >>"$DNS_ZONE_FILE"
+#  ********** begin $domain_name **********
+zone "$domain_name" {
+    type slave;
+    $main_server
+    file "$VAR_DIR/remote/$file_name";
+};
+#  ********** end $domain_name **********
+
+EOF
+    done
+  fi
   [ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
+
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # unset unneeded variables
   # unset
