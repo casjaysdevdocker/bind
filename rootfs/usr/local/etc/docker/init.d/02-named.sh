@@ -369,7 +369,7 @@ EOF
 zone "$domain_name" {
     type slave;
     $main_server
-    file "$VAR_DIR/remote/$file_name";
+    file "$VAR_DIR/secondary/$file_name";
 };
 #  ********** end $domain_name **********
 
