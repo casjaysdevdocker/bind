@@ -250,6 +250,7 @@ __run_pre_execute_checks() {
 __update_conf_files() {
   local exitCode=0                                               # default exit code
   local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
+  local secondary_ip=""
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # delete files
   #__rm ""
@@ -262,6 +263,12 @@ __update_conf_files() {
     touch "$LOG_DIR/$logfile"
     chmod -Rf 777 "$logfile"
   done
+  if [ -n "$DNS_SERVER_SECONDARY" ]; then
+    for ip in ${DNS_SERVER_SECONDARY//;/ }; do
+      secondary_ip+="$ip; "
+    done
+  fi
+  DNS_SERVER_SECONDARY="$secondary_ip"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # replace variables
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
@@ -269,9 +276,13 @@ __update_conf_files() {
   __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$NAMED_CONFIG_FILE"
   __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$NAMED_CONFIG_FILE"
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
   __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
   __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
+  if [ -n "$DNS_SERVER_SECONDARY" ]; then
+    __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
+  else
+    sed -i '/REPLACE_DNS_SERVER_SECONDARY/d' "$NAMED_CONFIG_FILE"
+  fi
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
   if [ -f "$CONF_DIR/custom.conf" ]; then
