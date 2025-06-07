@@ -171,7 +171,8 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
 DNS_TYPE="${DNS_TYPE:-primary}"
 DNS_REMOTE_SERVER="${DNS_REMOTE_SERVER:-}"
 DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-127.0.0.1}"
-DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-127.0.0.1}"
+DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-}"
+DNS_SERVER_TRANSFER_IP="${DNS_SERVER_TRANSFER_IP:-}"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Specifiy custom directories to be created
 ADD_APPLICATION_FILES=""
@@ -263,12 +264,12 @@ __update_conf_files() {
     touch "$LOG_DIR/$logfile"
     chmod -Rf 777 "$logfile"
   done
-  if [ -n "$DNS_SERVER_SECONDARY" ]; then
-    for ip in ${DNS_SERVER_SECONDARY//;/ }; do
+  if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
+    for ip in ${DNS_SERVER_TRANSFER_IP//;/ }; do
       secondary_ip+="$ip; "
     done
+    DNS_SERVER_TRANSFER_IP="$secondary_ip"
   fi
-  DNS_SERVER_SECONDARY="$secondary_ip"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # replace variables
   __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
@@ -278,10 +279,10 @@ __update_conf_files() {
   __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
   __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
   __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
-  if [ -n "$DNS_SERVER_SECONDARY" ]; then
-    __replace "REPLACE_DNS_SERVER_SECONDARY" "$DNS_SERVER_SECONDARY" "$NAMED_CONFIG_FILE"
+  if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
+    __replace "REPLACE_DNS_SERVER_TRANSFER_IP" "$DNS_SERVER_TRANSFER_IP" "$NAMED_CONFIG_FILE"
   else
-    sed -i '/REPLACE_DNS_SERVER_SECONDARY/d' "$NAMED_CONFIG_FILE"
+    sed -i '/REPLACE_DNS_SERVER_TRANSFER_IP/d' "$NAMED_CONFIG_FILE"
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
