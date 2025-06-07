@@ -275,9 +275,9 @@ __update_conf_files() {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
   if [ -f "$CONF_DIR/custom.conf" ]; then
-    mv -f "$CONF_DIR/custom.conf" "$NAMED_CONFIG_FILE"
+    cp -f "$CONF_DIR/custom.conf" "$NAMED_CONFIG_FILE"
   elif [ -f "$ETC_DIR/custom.conf" ]; then
-    mv -f "$ETC_DIR/custom.conf" "$NAMED_CONFIG_FILE"
+    cp -f "$ETC_DIR/custom.conf" "$NAMED_CONFIG_FILE"
   fi
   [ -n "$KEY_RNDC" ] && echo "$KEY_RNDC" >"$CONF_DIR/secrets/rndc.key"
   [ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
