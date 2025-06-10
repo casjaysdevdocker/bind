@@ -353,7 +353,8 @@ zone "$domain_name" {
 EOF
           else
             cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
-            cat <<EOF >>"$DNS_ZONE_FILE"
+            if [ -n "$DNS_SERVER_SECONDARY" ]; then
+              cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type master;
@@ -366,6 +367,20 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
+            else
+              cat <<EOF >>"$DNS_ZONE_FILE"
+#  ********** begin $domain_name **********
+zone "$domain_name" {
+    type master;
+    notify yes;
+    allow-transfer { any; key "backup-key"; trusted; };
+    allow-update { key "certbot."; key "dhcp-key"; trusted; key "ddns-key"; };
+    file "$VAR_DIR/primary/$file_name";
+};
+#  ********** end $domain_name **********
+
+EOF
+            fi
           fi
           grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
         fi
