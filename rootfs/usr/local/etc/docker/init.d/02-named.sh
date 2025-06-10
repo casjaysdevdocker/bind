@@ -170,9 +170,12 @@ KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
 # Additional variables
 DNS_TYPE="${DNS_TYPE:-primary}"
 DNS_REMOTE_SERVER="${DNS_REMOTE_SERVER:-}"
-DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-127.0.0.1}"
+DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-}"
 DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 DNS_SERVER_TRANSFER_IP="${DNS_SERVER_TRANSFER_IP:-}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+DNS_SERVER_SECONDARY="$(echo "${DNS_SERVER_SECONDARY:-$DNS_SERVER_TRANSFER_IP}" | sed 's|,|;|g;s| |; |g;s|;$||g;s| $||g')"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Specifiy custom directories to be created
 ADD_APPLICATION_FILES=""
