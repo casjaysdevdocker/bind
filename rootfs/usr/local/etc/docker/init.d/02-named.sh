@@ -36,26 +36,36 @@ export PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/s
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 SCRIPT_FILE="$0"
 SERVICE_NAME="named"
+# Function to exit appropriately based on context
+__script_exit() {
+	local exit_code="${1:-0}"
+	if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+		# Script is being sourced - use return
+		return "$exit_code"
+	else
+		# Script is being executed - use exit
+		exit "$exit_code"
+	fi
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 SCRIPT_NAME="$(basename "$SCRIPT_FILE" 2>/dev/null)"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # exit if __start_init_scripts function hasn't been Initialized
 if [ ! -f "/run/__start_init_scripts.pid" ]; then
-  echo "__start_init_scripts function hasn't been Initialized" >&2
-  SERVICE_IS_RUNNING="no"
-  exit 1
+	echo "__start_init_scripts function hasn't been Initialized" >&2
+	SERVICE_IS_RUNNING="no"
+	__script_exit 1
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import the functions file
 if [ -f "/usr/local/etc/docker/functions/entrypoint.sh" ]; then
-  . "/usr/local/etc/docker/functions/entrypoint.sh"
+	. "/usr/local/etc/docker/functions/entrypoint.sh"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import variables
 for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.sh; do
-  [ -f "$set_env" ] && . "$set_env"
+	[ -f "$set_env" ] && . "$set_env"
 done
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-printf '%s\n' "# - - - Initializing $SERVICE_NAME - - - #"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
 __rndc_key() { grep -s 'key "rndc-key" ' /etc/named.conf | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
@@ -201,120 +211,120 @@ CMD_ENV=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom commands to run before copying to /config
 __run_precopy() {
-  # Define environment
-  local hostname=${HOSTNAME}
-  # exit script if ENV has HTTP_ONLY=yes
-  [ "$HTTP_ONLY" = "yes" ] && exit 0
-  # Define actions/commands
-  [ -d "/data/named" ] && [ ! -d "$DATA_DIR" ] && mv -fv "/data/named" "$DATA_DIR"
-  [ -d "/config/named" ] && [ ! -d "$CONF_DIR" ] && mv -fv "/config/named" "$CONF_DIR"
+	# Define environment
+	local hostname=${HOSTNAME}
+	# exit script if ENV has HTTP_ONLY=yes
+	[ "$HTTP_ONLY" = "yes" ] && exit 0
+	# Define actions/commands
+	[ -d "/data/named" ] && [ ! -d "$DATA_DIR" ] && mv -fv "/data/named" "$DATA_DIR"
+	[ -d "/config/named" ] && [ ! -d "$CONF_DIR" ] && mv -fv "/config/named" "$CONF_DIR"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom prerun functions - IE setup WWW_ROOT_DIR
 __execute_prerun() {
-  # Define environment
-  local hostname=${HOSTNAME}
-  printf '\n%s\n' "$(date)" >>"$LOG_DIR/init.txt"
-  # Define actions/commands
+	# Define environment
+	local hostname=${HOSTNAME}
+	printf '\n%s\n' "$(date)" >>"$LOG_DIR/init.txt"
+	# Define actions/commands
 
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Run any pre-execution checks
 __run_pre_execute_checks() {
-  # Set variables
-  local exitStatus=0
-  local pre_execute_checks_MessageST="Running preexecute check for $SERVICE_NAME"   # message to show at start
-  local pre_execute_checks_MessageEnd="Finished preexecute check for $SERVICE_NAME" # message to show at completion
-  __banner "$pre_execute_checks_MessageST"
-  # Put command to execute in parentheses
-  {
-    chown -Rf "$SERVICE_USER":"$SERVICE_GROUP" $ETC_DIR $VAR_DIR $LOG_DIR
-    if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
-      echo "named-checkconf has succeeded"
-      return 0
-    else
-      echo "named-checkconf has failed:"
-      named-checkconf -z $NAMED_CONFIG_FILE
-      return 1
-    fi
-  }
-  exitStatus=$?
-  __banner "$pre_execute_checks_MessageEnd: Status $exitStatus"
+	# Set variables
+	local exitStatus=0
+	local pre_execute_checks_MessageST="Running preexecute check for $SERVICE_NAME"   # message to show at start
+	local pre_execute_checks_MessageEnd="Finished preexecute check for $SERVICE_NAME" # message to show at completion
+	__banner "$pre_execute_checks_MessageST"
+	# Put command to execute in parentheses
+	{
+		chown -Rf "$SERVICE_USER":"$SERVICE_GROUP" $ETC_DIR $VAR_DIR $LOG_DIR
+		if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
+			echo "named-checkconf has succeeded"
+			return 0
+		else
+			echo "named-checkconf has failed:"
+			named-checkconf -z $NAMED_CONFIG_FILE
+			return 1
+		fi
+	}
+	exitStatus=$?
+	__banner "$pre_execute_checks_MessageEnd: Status $exitStatus"
 
-  # show exit message
-  if [ $exitStatus -ne 0 ]; then
-    echo "The pre-execution check has failed" >&2
-    [ -f "$SERVICE_PID_FILE" ] && rm -Rf "$SERVICE_PID_FILE"
-    exit 1
-  fi
-  return $exitStatus
+	# show exit message
+	if [ $exitStatus -ne 0 ]; then
+		echo "The pre-execution check has failed" >&2
+		[ -f "$SERVICE_PID_FILE" ] && rm -Rf "$SERVICE_PID_FILE"
+		__script_exit 1
+	fi
+	return $exitStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __update_conf_files() {
-  local exitCode=0                                               # default exit code
-  local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
-  local secondary_ip=""
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # delete files
-  #__rm ""
+	local exitCode=0                                               # default exit code
+	local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
+	local secondary_ip=""
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# delete files
+	#__rm ""
 
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # custom commands
-  mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
-  mkdir -p "$ETC_DIR/keys" "$ETC_DIR/secrets" "$VAR_DIR/primary" "$VAR_DIR/secondary" "$VAR_DIR/stats" "$VAR_DIR/dynamic"
-  for logfile in debug.run querylog.log security.log xfer.log update.log notify.log client.log default.log general.log database.log; do
-    touch "$LOG_DIR/$logfile"
-    chmod -Rf 777 "$logfile"
-  done
-  if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
-    for ip in ${DNS_SERVER_TRANSFER_IP//;/ }; do
-      secondary_ip+="$ip; "
-    done
-    DNS_SERVER_TRANSFER_IP="$secondary_ip"
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # replace variables
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
-  __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
-  __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
-  if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
-    __replace "REPLACE_DNS_SERVER_TRANSFER_IP" "$DNS_SERVER_TRANSFER_IP" "$NAMED_CONFIG_FILE"
-  else
-    sed -i '/REPLACE_DNS_SERVER_TRANSFER_IP/d' "$NAMED_CONFIG_FILE"
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # define actions
-  if [ -f "$CONF_DIR/custom.conf" ]; then
-    cp -f "$CONF_DIR/custom.conf" "$NAMED_CONFIG_FILE"
-  elif [ -f "$ETC_DIR/custom.conf" ]; then
-    cp -f "$ETC_DIR/custom.conf" "$NAMED_CONFIG_FILE"
-  fi
-  [ -n "$KEY_RNDC" ] && echo "$KEY_RNDC" >"$CONF_DIR/secrets/rndc.key"
-  [ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
-  [ -n "$KEY_BACKUP" ] && echo "$KEY_BACKUP" >"$CONF_DIR/secrets/backup.key"
-  [ -n "$KEY_CERTBOT" ] && echo "$KEY_CERTBOT" >"$CONF_DIR/secrets/certbot.key"
-  [ -f "$VAR_DIR/root.cache" ] || cp -Rf "/usr/local/share/bind/data/root.cache" "$VAR_DIR/root.cache"
-  # exit function
-  return $exitCode
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# custom commands
+	mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
+	mkdir -p "$ETC_DIR/keys" "$ETC_DIR/secrets" "$VAR_DIR/primary" "$VAR_DIR/secondary" "$VAR_DIR/stats" "$VAR_DIR/dynamic"
+	for logfile in debug.run querylog.log security.log xfer.log update.log notify.log client.log default.log general.log database.log; do
+		touch "$LOG_DIR/$logfile"
+		chmod -Rf 777 "$logfile"
+	done
+	if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
+		for ip in ${DNS_SERVER_TRANSFER_IP//;/ }; do
+			secondary_ip+="$ip; "
+		done
+		DNS_SERVER_TRANSFER_IP="$secondary_ip"
+	fi
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# replace variables
+	__replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
+	__replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
+	__find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
+	__find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
+	if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
+		__replace "REPLACE_DNS_SERVER_TRANSFER_IP" "$DNS_SERVER_TRANSFER_IP" "$NAMED_CONFIG_FILE"
+	else
+		sed -i '/REPLACE_DNS_SERVER_TRANSFER_IP/d' "$NAMED_CONFIG_FILE"
+	fi
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# define actions
+	if [ -f "$CONF_DIR/custom.conf" ]; then
+		cp -f "$CONF_DIR/custom.conf" "$NAMED_CONFIG_FILE"
+	elif [ -f "$ETC_DIR/custom.conf" ]; then
+		cp -f "$ETC_DIR/custom.conf" "$NAMED_CONFIG_FILE"
+	fi
+	[ -n "$KEY_RNDC" ] && echo "$KEY_RNDC" >"$CONF_DIR/secrets/rndc.key"
+	[ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
+	[ -n "$KEY_BACKUP" ] && echo "$KEY_BACKUP" >"$CONF_DIR/secrets/backup.key"
+	[ -n "$KEY_CERTBOT" ] && echo "$KEY_CERTBOT" >"$CONF_DIR/secrets/certbot.key"
+	[ -f "$VAR_DIR/root.cache" ] || cp -Rf "/usr/local/share/bind/data/root.cache" "$VAR_DIR/root.cache"
+	# exit function
+	return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run before executing
 __pre_execute() {
-  local exitCode=0                                               # default exit code
-  local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
-  local remote_env="$(env | grep "$DNS_REMOTE_SERVER_")"
-  # execute if directories is empty
-  # __is_dir_empty "$CONF_DIR" && true
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # define actions to run after copying to /config
-  zone_files="$(find "$DATA_DIR/zones/" -type f | wc -l)"
-  if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
-    cat <<EOF >>"$DNS_ZONE_FILE"
+	local exitCode=0                                               # default exit code
+	local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
+	local remote_env="$(env | grep "$DNS_REMOTE_SERVER_")"
+	# execute if directories is empty
+	# __is_dir_empty "$CONF_DIR" && true
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# define actions to run after copying to /config
+	zone_files="$(find "$DATA_DIR/zones/" -type f | wc -l)"
+	if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
+		cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $HOSTNAME **********
 zone "$HOSTNAME" {
     type master;
@@ -327,24 +337,24 @@ zone "$HOSTNAME" {
 
 EOF
 
-    cat <<EOF | tee "$VAR_DIR/primary/$HOSTNAME.zone" &>/dev/null
+		cat <<EOF | tee "$VAR_DIR/primary/$HOSTNAME.zone" &>/dev/null
 ; config for $HOSTNAME
 @                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $DNS_SERIAL 10800 3600 1209600 38400)
                           IN  NS      $HOSTNAME.
 $HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 
 EOF
-  fi
-  #
-  if [ -d "$DATA_DIR/zones" ]; then
-    for dns_file in "$DATA_DIR/zones"/*; do
-      file_name="$(basename "$dns_file")"
-      domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
-      if [ -f "$dns_file" ]; then
-        if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
-          if [ "$DNS_TYPE" = "secondary" ]; then
-            [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
-            cat <<EOF >>"$DNS_ZONE_FILE"
+	fi
+	#
+	if [ -d "$DATA_DIR/zones" ]; then
+		for dns_file in "$DATA_DIR/zones"/*; do
+			file_name="$(basename "$dns_file")"
+			domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
+			if [ -f "$dns_file" ]; then
+				if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
+					if [ "$DNS_TYPE" = "secondary" ]; then
+						[ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
+						cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type slave;
@@ -354,10 +364,10 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
-          else
-            cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
-            if [ -n "$DNS_SERVER_SECONDARY" ]; then
-              cat <<EOF >>"$DNS_ZONE_FILE"
+					else
+						cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
+						if [ -n "$DNS_SERVER_SECONDARY" ]; then
+							cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type master;
@@ -370,8 +380,8 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
-            else
-              cat <<EOF >>"$DNS_ZONE_FILE"
+						else
+							cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $domain_name **********
 zone "$domain_name" {
     type master;
@@ -383,85 +393,85 @@ zone "$domain_name" {
 #  ********** end $domain_name **********
 
 EOF
-            fi
-          fi
-          grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
-        fi
-      fi
-    done
-  fi
+						fi
+					fi
+					grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
+				fi
+			fi
+		done
+	fi
 
-  if [ -d "$DATA_DIR/remote" ]; then
-    for dns_file in "$DATA_DIR/remote"/*; do
-      if [ -s "$dns_file" ]; then
-        file_name="$(basename "$dns_file")"
-        domain_name="$(basename "${dns_file%.*}")"
-        if [ -n "$domain_name" ]; then
-          cat "$dns_file" | sed 's|REPLACE_VAR_DIR|'$VAR_DIR'|g' >>"$DNS_ZONE_FILE"
-          grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
-        else
-          echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
-        fi
-      fi
-    done
-  fi
-  [ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
+	if [ -d "$DATA_DIR/remote" ]; then
+		for dns_file in "$DATA_DIR/remote"/*; do
+			if [ -s "$dns_file" ]; then
+				file_name="$(basename "$dns_file")"
+				domain_name="$(basename "${dns_file%.*}")"
+				if [ -n "$domain_name" ]; then
+					cat "$dns_file" | sed 's|REPLACE_VAR_DIR|'$VAR_DIR'|g' >>"$DNS_ZONE_FILE"
+					grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
+				else
+					echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
+				fi
+			fi
+		done
+	fi
+	[ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
 
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # unset unneeded variables
-  # unset
-  # Lets wait a few seconds before continuing
-  sleep 5
-  return $exitCode
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# unset unneeded variables
+	# unset
+	# Lets wait a few seconds before continuing
+	sleep 5
+	return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # function to run after executing
 __post_execute() {
-  local pid=""                                                    # init pid var
-  local retVal=0                                                  # set default exit code
-  local ctime=${POST_EXECUTE_WAIT_TIME:-1}                        # how long to wait before executing
-  local waitTime=$((ctime * 60))                                  # convert minutes to seconds
-  local postMessageST="Running post commands for $SERVICE_NAME"   # message to show at start
-  local postMessageEnd="Finished post commands for $SERVICE_NAME" # message to show at completion
-  # wait
-  sleep $waitTime
-  # execute commands after waiting
-  (
-    # show message
-    __banner "$postMessageST"
-    # commands to execute
-    true
-    # show exit message
-    __banner "$postMessageEnd: Status $retVal"
-  ) 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt" &
-  pid=$!
-  # set exitCode
-  ps ax | awk '{print $1}' | grep -v grep | grep -q "$execPid$" && retVal=0 || retVal=10
-  return $retVal
+	local pid=""                                                    # init pid var
+	local retVal=0                                                  # set default exit code
+	local ctime=${POST_EXECUTE_WAIT_TIME:-1}                        # how long to wait before executing
+	local waitTime=$((ctime * 60))                                  # convert minutes to seconds
+	local postMessageST="Running post commands for $SERVICE_NAME"   # message to show at start
+	local postMessageEnd="Finished post commands for $SERVICE_NAME" # message to show at completion
+	# wait
+	sleep $waitTime
+	# execute commands after waiting
+	(
+		# show message
+		__banner "$postMessageST"
+		# commands to execute
+		true
+		# show exit message
+		__banner "$postMessageEnd: Status $retVal"
+	) 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt" &
+	pid=$!
+	# set exitCode
+	ps ax | awk '{print $1}' | grep -v grep | grep -q "$execPid$" && retVal=0 || retVal=10
+	return $retVal
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to update config files - IE: change port
 __pre_message() {
-  local exitCode=0
-  [ -n "$PRE_EXEC_MESSAGE" ] && eval echo "$PRE_EXEC_MESSAGE"
-  # execute commands
+	local exitCode=0
+	[ -n "$PRE_EXEC_MESSAGE" ] && eval echo "$PRE_EXEC_MESSAGE"
+	# execute commands
 
-  # set exitCode
-  return $exitCode
+	# set exitCode
+	return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # use this function to setup ssl support
 __update_ssl_conf() {
-  local exitCode=0
-  local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
-  # execute commands
+	local exitCode=0
+	local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
+	# execute commands
 
-  # set exitCode
-  return $exitCode
+	# set exitCode
+	return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __create_service_env() {
-  cat <<EOF | tee -p "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" &>/dev/null
+	cat <<EOF | tee -p "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" &>/dev/null
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # root/admin user info [password/random]
 #ENV_ROOT_USER_NAME="${ENV_ROOT_USER_NAME:-$NAMED_ROOT_USER_NAME}"   # root user name
@@ -476,64 +486,64 @@ __create_service_env() {
 #user_pass="${ENV_USER_PASS:-$user_pass}"                                             # normal user password
 
 EOF
-  __file_exists_with_content "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" || return 1
+	__file_exists_with_content "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # script to start server
 __run_start_script() {
-  local runExitCode=0
-  local workdir="$(eval echo "${WORK_DIR:-}")"                   # expand variables
-  local cmd="$(eval echo "${EXEC_CMD_BIN:-}")"                   # expand variables
-  local args="$(eval echo "${EXEC_CMD_ARGS:-}")"                 # expand variables
-  local name="$(eval echo "${EXEC_CMD_NAME:-}")"                 # expand variables
-  local pre="$(eval echo "${EXEC_PRE_SCRIPT:-}")"                # expand variables
-  local extra_env="$(eval echo "${CMD_ENV//,/ }")"               # expand variables
-  local lc_type="$(eval echo "${LANG:-${LC_ALL:-$LC_CTYPE}}")"   # expand variables
-  local home="$(eval echo "${workdir//\/root/\/tmp\/docker}")"   # expand variables
-  local path="$(eval echo "$PATH")"                              # expand variables
-  local message="$(eval echo "")"                                # expand variables
-  local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
-  [ -f "$CONF_DIR/$SERVICE_NAME.exec_cmd.sh" ] && . "$CONF_DIR/$SERVICE_NAME.exec_cmd.sh"
-  #
-  if [ -z "$cmd" ]; then
-    __post_execute 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt"
-    retVal=$?
-    echo "Initializing $SCRIPT_NAME has completed"
-    exit $retVal
-  else
-    # ensure the command exists
-    if [ ! -x "$cmd" ]; then
-      echo "$name is not a valid executable"
-      return 2
-    fi
-    # check and exit if already running
-    if __proc_check "$name" || __proc_check "$cmd"; then
-      echo "$name is already running" >&2
-      return 0
-    else
-      # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      # show message if env exists
-      if [ -n "$cmd" ]; then
-        [ -n "$SERVICE_USER" ] && echo "Setting up $cmd to run as $SERVICE_USER" || SERVICE_USER="root"
-        [ -n "$SERVICE_PORT" ] && echo "$name will be running on port $SERVICE_PORT" || SERVICE_PORT=""
-      fi
-      if [ -n "$pre" ] && [ -n "$(command -v "$pre" 2>/dev/null)" ]; then
-        export cmd_exec="$pre $cmd $args"
-        message="Starting service: $name $args through $pre"
-      else
-        export cmd_exec="$cmd $args"
-        message="Starting service: $name $args"
-      fi
-      [ -n "$su_exec" ] && echo "using $su_exec" | tee -a -p "/data/logs/init.txt"
-      echo "$message" | tee -a -p "/data/logs/init.txt"
-      su_cmd touch "$SERVICE_PID_FILE"
-      if [ "$RESET_ENV" = "yes" ]; then
-        env_command="$(echo "env -i HOME=\"$home\" LC_CTYPE=\"$lc_type\" PATH=\"$path\" HOSTNAME=\"$sysname\" USER=\"${SERVICE_USER:-$RUNAS_USER}\" $extra_env")"
-        execute_command="$(__trim "$su_exec $env_command $cmd_exec")"
-        if [ ! -f "$START_SCRIPT" ]; then
-          cat <<EOF >"$START_SCRIPT"
+	local runExitCode=0
+	local workdir="$(eval echo "${WORK_DIR:-}")"                   # expand variables
+	local cmd="$(eval echo "${EXEC_CMD_BIN:-}")"                   # expand variables
+	local args="$(eval echo "${EXEC_CMD_ARGS:-}")"                 # expand variables
+	local name="$(eval echo "${EXEC_CMD_NAME:-}")"                 # expand variables
+	local pre="$(eval echo "${EXEC_PRE_SCRIPT:-}")"                # expand variables
+	local extra_env="$(eval echo "${CMD_ENV//,/ }")"               # expand variables
+	local lc_type="$(eval echo "${LANG:-${LC_ALL:-$LC_CTYPE}}")"   # expand variables
+	local home="$(eval echo "${workdir//\/root/\/tmp\/docker}")"   # expand variables
+	local path="$(eval echo "$PATH")"                              # expand variables
+	local message="$(eval echo "")"                                # expand variables
+	local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}" # set hostname
+	[ -f "$CONF_DIR/$SERVICE_NAME.exec_cmd.sh" ] && . "$CONF_DIR/$SERVICE_NAME.exec_cmd.sh"
+	#
+	if [ -z "$cmd" ]; then
+		__post_execute 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt"
+		retVal=$?
+		echo "Initializing $SCRIPT_NAME has completed"
+		__script_exit $retVal
+	else
+		# ensure the command exists
+		if [ ! -x "$cmd" ]; then
+			echo "$name is not a valid executable"
+			return 2
+		fi
+		# check and exit if already running
+		if __proc_check "$name" || __proc_check "$cmd"; then
+			echo "$name is already running" >&2
+			return 0
+		else
+			# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+			# show message if env exists
+			if [ -n "$cmd" ]; then
+				[ -n "$SERVICE_USER" ] && echo "Setting up $cmd to run as $SERVICE_USER" || SERVICE_USER="root"
+				[ -n "$SERVICE_PORT" ] && echo "$name will be running on port $SERVICE_PORT" || SERVICE_PORT=""
+			fi
+			if [ -n "$pre" ] && [ -n "$(command -v "$pre" 2>/dev/null)" ]; then
+				export cmd_exec="$pre $cmd $args"
+				message="Starting service: $name $args through $pre"
+			else
+				export cmd_exec="$cmd $args"
+				message="Starting service: $name $args"
+			fi
+			[ -n "$su_exec" ] && echo "using $su_exec" | tee -a -p "/data/logs/init.txt"
+			echo "$message" | tee -a -p "/data/logs/init.txt"
+			su_cmd touch "$SERVICE_PID_FILE"
+			if [ "$RESET_ENV" = "yes" ]; then
+				env_command="$(echo "env -i HOME=\"$home\" LC_CTYPE=\"$lc_type\" PATH=\"$path\" HOSTNAME=\"$sysname\" USER=\"${SERVICE_USER:-$RUNAS_USER}\" $extra_env")"
+				execute_command="$(__trim "$su_exec $env_command $cmd_exec")"
+				if [ ! -f "$START_SCRIPT" ]; then
+					cat <<EOF >"$START_SCRIPT"
 #!/usr/bin/env bash
-trap 'exitCode=\$?;[ \$exitCode -ne 0 ] && [ -f "\$SERVICE_PID_FILE" ] && rm -Rf "\$SERVICE_PID_FILE";exit \$exitCode' EXIT
+trap 'exitCode=\$?;if [ \$exitCode -ne 0 ] && [ -f "\$SERVICE_PID_FILE" ]; then rm -Rf "\$SERVICE_PID_FILE"; fi; exit \$exitCode' EXIT
 #
 set -Eeo pipefail
 # Setting up $cmd to run as ${SERVICE_USER:-root} with env
@@ -549,13 +559,13 @@ checkPID="\$(ps ax | awk '{print \$1}' | grep -v grep | grep "\$execPid$" || fal
 exit \$retVal
 
 EOF
-        fi
-      else
-        if [ ! -f "$START_SCRIPT" ]; then
-          execute_command="$(__trim "$su_exec $cmd_exec")"
-          cat <<EOF >"$START_SCRIPT"
+				fi
+			else
+				if [ ! -f "$START_SCRIPT" ]; then
+					execute_command="$(__trim "$su_exec $cmd_exec")"
+					cat <<EOF >"$START_SCRIPT"
 #!/usr/bin/env bash
-trap 'exitCode=\$?;[ \$exitCode -ne 0 ] && [ -f "\$SERVICE_PID_FILE" ] && rm -Rf "\$SERVICE_PID_FILE";exit \$exitCode' EXIT
+trap 'exitCode=\$?;if [ \$exitCode -ne 0 ] && [ -f "\$SERVICE_PID_FILE" ]; then rm -Rf "\$SERVICE_PID_FILE"; fi; exit \$exitCode' EXIT
 #
 set -Eeo pipefail
 # Setting up $cmd to run as ${SERVICE_USER:-root}
@@ -571,36 +581,36 @@ checkPID="\$(ps ax | awk '{print \$1}' | grep -v grep | grep "\$execPid$" || fal
 exit \$retVal
 
 EOF
-        fi
-      fi
-    fi
-    [ -x "$START_SCRIPT" ] || chmod 755 -Rf "$START_SCRIPT"
-    [ "$CONTAINER_INIT" = "yes" ] || eval sh -c "$START_SCRIPT"
-    runExitCode=$?
-    return $runExitCode
-  fi
+				fi
+			fi
+		fi
+		[ -x "$START_SCRIPT" ] || chmod 755 -Rf "$START_SCRIPT"
+		[ "$CONTAINER_INIT" = "yes" ] || eval sh -c "$START_SCRIPT"
+		runExitCode=$?
+		return $runExitCode
+	fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # username and password actions
 __run_secure_function() {
-  local filesperms
-  if [ -n "$user_name" ] || [ -n "$user_pass" ]; then
-    for filesperms in "${USER_FILE_PREFIX}"/*; do
-      if [ -e "$filesperms" ]; then
-        chmod -Rf 600 "$filesperms"
-        chown -Rf $SERVICE_USER:$SERVICE_USER "$filesperms" 2>/dev/null
-      fi
-    done 2>/dev/null | tee -p -a "/data/logs/init.txt"
-  fi
-  if [ -n "$root_user_name" ] || [ -n "$root_user_pass" ]; then
-    for filesperms in "${ROOT_FILE_PREFIX}"/*; do
-      if [ -e "$filesperms" ]; then
-        chmod -Rf 600 "$filesperms"
-        chown -Rf $SERVICE_USER:$SERVICE_USER "$filesperms" 2>/dev/null
-      fi
-    done 2>/dev/null | tee -p -a "/data/logs/init.txt"
-  fi
-  unset filesperms
+	local filesperms
+	if [ -n "$user_name" ] || [ -n "$user_pass" ]; then
+		for filesperms in "${USER_FILE_PREFIX}"/*; do
+			if [ -e "$filesperms" ]; then
+				chmod -Rf 600 "$filesperms"
+				chown -Rf $SERVICE_USER:$SERVICE_USER "$filesperms" 2>/dev/null
+			fi
+		done 2>/dev/null | tee -p -a "/data/logs/init.txt"
+	fi
+	if [ -n "$root_user_name" ] || [ -n "$root_user_pass" ]; then
+		for filesperms in "${ROOT_FILE_PREFIX}"/*; do
+			if [ -e "$filesperms" ]; then
+				chmod -Rf 600 "$filesperms"
+				chown -Rf $SERVICE_USER:$SERVICE_USER "$filesperms" 2>/dev/null
+			fi
+		done 2>/dev/null | tee -p -a "/data/logs/init.txt"
+	fi
+	unset filesperms
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Allow ENV_ variable - Import env file
@@ -632,18 +642,18 @@ __check_service "$1" && SERVICE_IS_RUNNING=yes
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Database env
 if [ "$IS_DATABASE_SERVICE" = "yes" ] || [ "$USES_DATABASE_SERVICE" = "yes" ]; then
-  RESET_ENV="no"
-  DATABASE_CREATE="${ENV_DATABASE_CREATE:-$DATABASE_CREATE}"
-  DATABASE_USER="${ENV_DATABASE_USER:-${DATABASE_USER:-$user_name}}"
-  DATABASE_PASSWORD="${ENV_DATABASE_PASSWORD:-${DATABASE_PASSWORD:-$user_pass}}"
-  DATABASE_ROOT_USER="${ENV_DATABASE_ROOT_USER:-${DATABASE_ROOT_USER:-$root_user_name}}"
-  DATABASE_ROOT_PASSWORD="${ENV_DATABASE_ROOT_PASSWORD:-${DATABASE_ROOT_PASSWORD:-$root_user_pass}}"
-  if [ -n "$DATABASE_PASSWORD" ] && [ ! -f "${USER_FILE_PREFIX}/db_pass_user" ]; then
-    echo "$DATABASE_PASSWORD" >"${USER_FILE_PREFIX}/db_pass_user"
-  fi
-  if [ -n "$DATABASE_ROOT_PASSWORD" ] && [ ! -f "${ROOT_FILE_PREFIX}/db_pass_root" ]; then
-    echo "$DATABASE_ROOT_PASSWORD" >"${ROOT_FILE_PREFIX}/db_pass_root"
-  fi
+	RESET_ENV="no"
+	DATABASE_CREATE="${ENV_DATABASE_CREATE:-$DATABASE_CREATE}"
+	DATABASE_USER="${ENV_DATABASE_USER:-${DATABASE_USER:-$user_name}}"
+	DATABASE_PASSWORD="${ENV_DATABASE_PASSWORD:-${DATABASE_PASSWORD:-$user_pass}}"
+	DATABASE_ROOT_USER="${ENV_DATABASE_ROOT_USER:-${DATABASE_ROOT_USER:-$root_user_name}}"
+	DATABASE_ROOT_PASSWORD="${ENV_DATABASE_ROOT_PASSWORD:-${DATABASE_ROOT_PASSWORD:-$root_user_pass}}"
+	if [ -n "$DATABASE_PASSWORD" ] && [ ! -f "${USER_FILE_PREFIX}/db_pass_user" ]; then
+		echo "$DATABASE_PASSWORD" >"${USER_FILE_PREFIX}/db_pass_user"
+	fi
+	if [ -n "$DATABASE_ROOT_PASSWORD" ] && [ ! -f "${ROOT_FILE_PREFIX}/db_pass_root" ]; then
+		echo "$DATABASE_ROOT_PASSWORD" >"${ROOT_FILE_PREFIX}/db_pass_root"
+	fi
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Allow variables via imports - Overwrite existing
@@ -711,7 +721,7 @@ __run_precopy
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Copy /config to /etc
 for config_2_etc in $CONF_DIR $ADDITIONAL_CONFIG_DIRS; do
-  __initialize_system_etc "$config_2_etc" 2>/dev/stderr | tee -p -a "/data/logs/init.txt"
+	__initialize_system_etc "$config_2_etc" 2>/dev/stderr | tee -p -a "/data/logs/init.txt"
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Replace variables
@@ -735,15 +745,15 @@ __run_pre_execute_checks 2>/dev/stderr | tee -a -p "/data/logs/entrypoint.log" "
 __run_start_script 2>>/dev/stderr | tee -p -a "/data/logs/entrypoint.log"
 errorCode=$?
 if [ -n "$EXEC_CMD_BIN" ]; then
-  if [ "$errorCode" -eq 0 ]; then
-    SERVICE_EXIT_CODE=0
-    SERVICE_IS_RUNNING="yes"
-  else
-    SERVICE_EXIT_CODE=$errorCode
-    SERVICE_IS_RUNNING="${SERVICE_IS_RUNNING:-no}"
-    [ -s "$SERVICE_PID_FILE" ] || rm -Rf "$SERVICE_PID_FILE"
-  fi
-  SERVICE_EXIT_CODE=0
+	if [ "$errorCode" -eq 0 ]; then
+		SERVICE_EXIT_CODE=0
+		SERVICE_IS_RUNNING="yes"
+	else
+		SERVICE_EXIT_CODE=$errorCode
+		SERVICE_IS_RUNNING="${SERVICE_IS_RUNNING:-no}"
+		[ -s "$SERVICE_PID_FILE" ] || rm -Rf "$SERVICE_PID_FILE"
+	fi
+	SERVICE_EXIT_CODE=0
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # start the post execute function in background
@@ -751,4 +761,4 @@ __post_execute 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt" &
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __banner "Initializing of $SERVICE_NAME has completed with statusCode: $SERVICE_EXIT_CODE" | tee -p -a "/data/logs/entrypoint.log" "/data/logs/init.txt"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-exit $SERVICE_EXIT_CODE
+__script_exit $SERVICE_EXIT_CODE
