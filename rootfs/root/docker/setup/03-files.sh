@@ -24,6 +24,7 @@ set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set env variables
 exitCode=0
+[ -d "/etc/tor" ] && rm -Rf "/etc/tor"/*
 [ -d "/etc/bind" ] && rm -Rf "/etc/bind"/*
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Predifined actions

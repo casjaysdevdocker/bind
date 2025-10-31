@@ -281,7 +281,7 @@ __update_conf_files() {
 
 	# - - - - - - - - - - - - - - - - - - - - - - - - -
 	# custom commands
-	mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
+	mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets" "$DATA_DIR/zones"
 	mkdir -p "$ETC_DIR/keys" "$ETC_DIR/secrets" "$VAR_DIR/primary" "$VAR_DIR/secondary" "$VAR_DIR/stats" "$VAR_DIR/dynamic"
 	for logfile in debug.run querylog.log security.log xfer.log update.log notify.log client.log default.log general.log database.log; do
 		touch "$LOG_DIR/$logfile"
@@ -338,7 +338,7 @@ __pre_execute() {
 	# __is_dir_empty "$CONF_DIR" && true
 	# - - - - - - - - - - - - - - - - - - - - - - - - -
 	# define actions to run after copying to /config
-	zone_files="$(find "$DATA_DIR/zones/" -type f | wc -l)"
+	zone_files="$(find "$DATA_DIR/zones/" -type f 2>/dev/null | wc -l)"
 	if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
 		cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $HOSTNAME **********
