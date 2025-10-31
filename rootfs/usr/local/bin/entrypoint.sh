@@ -12,8 +12,8 @@
 # @@Description      :  Entrypoint file for bind
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
-# @@Other            :  
-# @@Resource         :  
+# @@Other            :
+# @@Resource         :
 # @@Terminal App     :  no
 # @@sudo/root        :  no
 # @@Template         :  other/docker-entrypoint
@@ -400,9 +400,17 @@ __run_message
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Just start services
 START_SERVICES="${START_SERVICES:-SYSTEM_INIT}"
+[ "$1" = "sh" ] && START_SERVICES=no
+[ "$1" = "shell" ] && START_SERVICES=no
+[ "$1" = "init" ] && START_SERVICES=no
+[ "$1" = "backup" ] && START_SERVICES=no
+[ "$1" = "healthcheck" ] && START_SERVICES=no
+[ "$1" = "cron" ] && START_SERVICES=no
+[ "$1" = "tail" ] && START_SERVICES=no
+[ "$1" = "logs" ] && START_SERVICES=no
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Start all services if no pidfile
-if [ "$START_SERVICES" = "yes" ] && [ "$1" != "backup" ] && [ "$1" != "healthcheck" ] && [ "$1" != "cron" ] && [ "$1" != "tail" ] && [ "$1" != "logs" ] && [ "$1" != "cron" ]; then
+if [ "$START_SERVICES" = "yes" ]; then
   [ "$1" = "start" ] && shift 1
   [ "$1" = "all" ] && shift 1
   [ "$1" = "init" ] && export CONTAINER_INIT="yes"

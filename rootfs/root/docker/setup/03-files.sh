@@ -24,7 +24,7 @@ set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set env variables
 exitCode=0
-
+[ -d "/etc/bind" ] && rm -Rf "/etc/bind"/*
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Predifined actions
 if [ -d "/tmp/bin" ]; then

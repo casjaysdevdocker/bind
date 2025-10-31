@@ -102,7 +102,7 @@ CONF_DIR="/config/bind" # set config directory
 ETC_DIR="/etc/bind"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # set the var dir
-VAR_DIR=""
+VAR_DIR="/var/bind"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 TMP_DIR="/tmp/bind"       # set the temp dir
 RUN_DIR="/run/bind"       # set scripts pid dir
