@@ -348,7 +348,7 @@ zone "$HOSTNAME" {
     notify yes;
     allow-transfer { any; key "backup-key"; trusted; };
     allow-update {key "certbot."; key "dhcp-key"; trusted; };
-    file "$VAR_DIR/primary/$file_name";
+    file "$file_name";
 };
 #  ********** end $HOSTNAME **********
 
