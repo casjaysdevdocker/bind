@@ -295,6 +295,11 @@ __update_conf_files() {
 	fi
 	# - - - - - - - - - - - - - - - - - - - - - - - - -
 	# replace variables
+	__replace "REPLACE_VAR_DIR" "$VAR_DIR" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_ETC_DIR" "$ETC_DIR" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_LOG_DIR" "$LOG_DIR" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_RUN_DIR" "$RUN_DIR" "$NAMED_CONFIG_FILE"
+	__replace "REPLACE_DATA_DIR" "$DATA_DIR" "$NAMED_CONFIG_FILE"
 	__replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
 	__replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$NAMED_CONFIG_FILE"
 	__replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$NAMED_CONFIG_FILE"
