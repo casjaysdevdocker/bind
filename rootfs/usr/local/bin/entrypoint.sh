@@ -410,7 +410,7 @@ START_SERVICES="${START_SERVICES:-SYSTEM_INIT}"
 [ "$1" = "logs" ] && START_SERVICES=no
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Start all services if no pidfile
-if [ "$START_SERVICES" = "yes" ]; then
+if [ "$START_SERVICES" = "yes" ] || [ -z "$1" ]; then
   [ "$1" = "start" ] && shift 1
   [ "$1" = "all" ] && shift 1
   [ "$1" = "init" ] && export CONTAINER_INIT="yes"
