@@ -340,6 +340,7 @@ __pre_execute() {
 	# define actions to run after copying to /config
 	zone_files="$(find "$DATA_DIR/zones/" -type f 2>/dev/null | wc -l)"
 	if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
+		file_name="$VAR_DIR/primary/$HOSTNAME.zone"
 		cat <<EOF >>"$DNS_ZONE_FILE"
 #  ********** begin $HOSTNAME **********
 zone "$HOSTNAME" {
@@ -362,7 +363,7 @@ $HOSTNAME.                IN  A       $CONTAINER_IP4_ADDRESS
 EOF
 	fi
 	#
-	if [ -d "$DATA_DIR/zones" ]; then
+	if [ -d "$DATA_DIR/zones" ] && [ "$zone_files" -ne 0 ]; then
 		for dns_file in "$DATA_DIR/zones"/*; do
 			file_name="$(basename "$dns_file")"
 			domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
