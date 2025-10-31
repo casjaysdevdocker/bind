@@ -480,6 +480,7 @@ backup)
   ;;
 # Docker healthcheck
 healthcheck)
+  shift 1
   arguments="$*"
   healthStatus=0
   healthEnabled="${HEALTH_ENABLED:-}"
