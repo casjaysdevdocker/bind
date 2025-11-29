@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202510311144-git
-# @@Author           :  Jason Hempstead
-# @@Contact          :  jason@casjaysdev.pro
-# @@License          :  WTFPL
+##@Version           :  GEN_SCRIPT_REPLACE_VERSION
+# @@Author           :  GEN_SCRIPT_REPLACE_AUTHOR
+# @@Contact          :  GEN_SCRIPT_REPLACE_EMAIL
+# @@License          :  GEN_SCRIPT_REPLACE_LICENSE
 # @@ReadME           :  entrypoint.sh --help
-# @@Copyright        :  Copyright: (c) 2025 Jason Hempstead, Casjays Developments
-# @@Created          :  Friday, Oct 31, 2025 11:44 EDT
+# @@Copyright        :  GEN_SCRIPT_REPLACE_COPYRIGHT
+# @@Created          :  GEN_SCRIPT_REPLACE_DATE
 # @@File             :  entrypoint.sh
-# @@Description      :  Entrypoint file for bind
-# @@Changelog        :  New script
-# @@TODO             :  Better documentation
-# @@Other            :
-# @@Resource         :
-# @@Terminal App     :  no
-# @@sudo/root        :  no
+# @@Description      :  Entrypoint file for GEN_SCRIPT_REPLACE_APPNAME
+# @@Changelog        :  GEN_SCRIPT_REPLACE_CHANGELOG
+# @@TODO             :  GEN_SCRIPT_REPLACE_TODO
+# @@Other            :  GEN_SCRIPT_REPLACE_OTHER
+# @@Resource         :  GEN_SCRIPT_REPLACE_RES
+# @@Terminal App     :  GEN_SCRIPT_REPLACE_TERMINAL
+# @@sudo/root        :  GEN_SCRIPT_REPLACE_SUDO
 # @@Template         :  other/docker-entrypoint
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317,SC2329
+# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # run trap command on exit
 trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "yes" ] && [ -f "$SERVICE_PID_FILE" ] && rm -Rf "$SERVICE_PID_FILE";exit $retVal' INT TERM PWR
@@ -31,7 +31,7 @@ PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set bash options
 SCRIPT_FILE="$0"
-CONTAINER_NAME="bind"
+CONTAINER_NAME="GEN_SCRIPT_REPLACE_APPNAME"
 SCRIPT_NAME="$(basename -- "$SCRIPT_FILE" 2>/dev/null)"
 CONTAINER_NAME="${ENV_CONTAINER_NAME:-$CONTAINER_NAME}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -84,8 +84,8 @@ SERVICE_UID="${SERVICE_UID:-0}" # set the user id
 SERVICE_GID="${SERVICE_GID:-0}" # set the group id
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User and group in which the service switches to - IE: nginx,apache,mysql,postgres
-SERVICE_USER="${SERVICE_USER:-bind}"   # execute command as another user
-SERVICE_GROUP="${SERVICE_GROUP:-bind}" # Set the service group
+SERVICE_USER="${SERVICE_USER:-GEN_SCRIPT_REPLACE_APPNAME}"   # execute command as another user
+SERVICE_GROUP="${SERVICE_GROUP:-GEN_SCRIPT_REPLACE_APPNAME}" # Set the service group
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Secondary ports
 SERVER_PORTS="" # specifiy other ports
@@ -95,7 +95,7 @@ WEB_SERVER_PORT="" # port : 80,443
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Healthcheck variables
 HEALTH_ENABLED="yes" # enable healthcheck [yes/no]
-SERVICES_LIST="tini" # comma seperated list of processes for the healthcheck
+SERVICES_LIST="tini" # comma separated list of processes for the healthcheck
 HEALTH_ENDPOINTS=""  # url endpoints: [http://localhost/health,http://localhost/test]
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Update path var
@@ -258,7 +258,7 @@ fi
 if [ "$ENTRYPOINT_FIRST_RUN" != "no" ]; then
   # Show start message
   if [ "$CONFIG_DIR_INITIALIZED" = "no" ] || [ "$DATA_DIR_INITIALIZED" = "no" ]; then
-    [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Executing entrypoint script for bind"
+    [ "$ENTRYPOINT_MESSAGE" = "yes" ] && echo "Executing entrypoint script for GEN_SCRIPT_REPLACE_APPNAME"
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # Set reusable variables
@@ -371,11 +371,6 @@ else
   rm -f /run/__start_init_scripts.pid /run/init.d/*.pid /run/*.pid 2>/dev/null || true
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-if [ ! -f "/run/__start_init_scripts.pid" ]; then
-  START_SERVICES="yes"
-  touch /run/__start_init_scripts.pid
-fi
-# - - - - - - - - - - - - - - - - - - - - - - - - -
 [ "$ENTRYPOINT_MESSAGE" = "yes" ] && __printf_space "40" "The containers ip address is:" "$CONTAINER_IP4_ADDRESS"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Show configured listing processes
@@ -400,26 +395,26 @@ __run_message
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Just start services
 START_SERVICES="${START_SERVICES:-SYSTEM_INIT}"
-[ "$1" = "sh" ] && START_SERVICES=no
-[ "$1" = "shell" ] && START_SERVICES=no
-[ "$1" = "init" ] && START_SERVICES=no
-[ "$1" = "backup" ] && START_SERVICES=no
-[ "$1" = "healthcheck" ] && START_SERVICES=no
-[ "$1" = "cron" ] && START_SERVICES=no
-[ "$1" = "tail" ] && START_SERVICES=no
-[ "$1" = "logs" ] && START_SERVICES=no
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Start all services if no pidfile
+# Determine if we should start services based on command
+# Only skip service start for the 'init' command
+SKIP_SERVICE_START="no"
+[ "$1" = "init" ] && SKIP_SERVICE_START="yes" && CONTAINER_INIT="yes"
+[ "$2" = "init" ] && SKIP_SERVICE_START="yes" && CONTAINER_INIT="yes"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Start all services if no pidfile and not skipping
 if [ "$START_SERVICES" = "yes" ] || [ -z "$1" ]; then
-  [ "$1" = "start" ] && shift 1
-  [ "$1" = "all" ] && shift 1
-  [ "$1" = "init" ] && export CONTAINER_INIT="yes"
-  echo "$$" >"$ENTRYPOINT_PID_FILE"
-  rm -Rf "/run"/*/*pid
-  __start_init_scripts "/usr/local/etc/docker/init.d"
+  if [ "$SKIP_SERVICE_START" = "no" ]; then
+    [ "$1" = "start" ] && shift 1
+    [ "$1" = "all" ] && shift 1
+    rm -Rf "/run"/*/*pid 2>/dev/null || true
+    echo "$$" >"$ENTRYPOINT_PID_FILE"
+    __start_init_scripts "/usr/local/etc/docker/init.d"
+    CONTAINER_INIT="${CONTAINER_INIT:-no}"
+  fi
   START_SERVICES="no"
-  CONTAINER_INIT="${CONTAINER_INIT:-no}"
 fi
+export START_SERVICES CONTAINER_INIT ENTRYPOINT_PID_FILE
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Begin options
 case "$1" in
@@ -481,50 +476,56 @@ backup)
 # Docker healthcheck
 healthcheck)
   shift 1
-  arguments="$*"
-  healthStatus=0
-  healthEnabled="${HEALTH_ENABLED:-}"
-  healthPorts="${WEB_SERVER_PORTS:-}"
-  healthEndPoints="${HEALTH_ENDPOINTS:-}"
-  SERVICES_LIST="${arguments:-$SERVICES_LIST}"
-  services="$(echo "${SERVICES_LIST//,/ }")"
-  healthMessage="Everything seems to be running"
-  [ "$healthEnabled" = "yes" ] || exit 0
-  if [ -d "/run/healthcheck" ] && [ "$(ls -A "/run/healthcheck" | wc -l)" -ne 0 ]; then
-    for service in /run/healthcheck/*; do
-      name=$(basename -- $service)
-      services+="$name "
+  case "$1" in
+  init | test)
+    exit 0
+    ;;
+  *)
+    arguments="$*"
+    healthStatus=0
+    healthEnabled="${HEALTH_ENABLED:-}"
+    healthPorts="${WEB_SERVER_PORTS:-}"
+    healthEndPoints="${HEALTH_ENDPOINTS:-}"
+    SERVICES_LIST="${arguments:-$SERVICES_LIST}"
+    services="$(echo "${SERVICES_LIST//,/ }")"
+    healthMessage="Everything seems to be running"
+    [ "$healthEnabled" = "yes" ] || exit 0
+    if [ -d "/run/healthcheck" ] && [ "$(ls -A "/run/healthcheck" | wc -l)" -ne 0 ]; then
+      for service in /run/healthcheck/*; do
+        name=$(basename -- $service)
+        services+="$name "
+      done
+    fi
+    services="$(echo "$services" | tr ' ' '\n' | sort -u | grep -v '^$')"
+    for proc in $services; do
+      if [ -n "$proc" ]; then
+        if ! __pgrep "$proc"; then
+          echo "$proc is not running" >&2
+          healthStatus=$((healthStatus + 1))
+        fi
+      fi
     done
-  fi
-  services="$(echo "$services" | tr ' ' '\n' | sort -u | grep -v '^$')"
-  { [ "$1" = "init" ] || [ "$1" = "test" ]; } && exit 0
-  for proc in $services; do
-    if [ -n "$proc" ]; then
-      if ! __pgrep "$proc"; then
-        echo "$proc is not running" >&2
-        healthStatus=$((healthStatus + 1))
+    for port in $ports; do
+      if [ -n "$(type -P netstat)" ] && [ -n "$port" ]; then
+        if ! netstat -taupln | grep -q ":$port "; then
+          echo "$port isn't open" >&2
+          healthStatus=$((healthStatus + 1))
+        fi
       fi
-    fi
-  done
-  for port in $ports; do
-    if [ -n "$(type -P netstat)" ] && [ -n "$port" ]; then
-      if ! netstat -taupln | grep -q ":$port "; then
-        echo "$port isn't open" >&2
-        healthStatus=$((healthStatus + 1))
+    done
+    for endpoint in $healthEndPoints; do
+      if [ -n "$endpoint" ]; then
+        if ! __curl "$endpoint"; then
+          echo "Can not connect to $endpoint" >&2
+          healthStatus=$((healthStatus + 1))
+        fi
       fi
-    fi
-  done
-  for endpoint in $healthEndPoints; do
-    if [ -n "$endpoint" ]; then
-      if ! __curl "$endpoint"; then
-        echo "Can not connect to $endpoint" >&2
-        healthStatus=$((healthStatus + 1))
-      fi
-    fi
-  done
-  [ "$healthStatus" -eq 0 ] || healthMessage="Errors reported see: docker logs --follow $CONTAINER_NAME"
-  [ -n "$healthMessage" ] && echo "$healthMessage"
-  exit $healthStatus
+    done
+    [ "$healthStatus" -eq 0 ] || healthMessage="Errors reported see: docker logs --follow $CONTAINER_NAME"
+    [ -n "$healthMessage" ] && echo "$healthMessage"
+    exit $healthStatus
+    ;;
+  esac
   ;;
   # show open ports
 ports)
