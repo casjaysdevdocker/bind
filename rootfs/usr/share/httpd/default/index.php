@@ -67,6 +67,8 @@
     SERVER Address:
     <?php echo $_SERVER['SERVER_ADDR']; ?> <br />
   </h2>
+  <h3>REPLACE_DNS_SERVER_STATUS</h3>
+  <p>Last updated on: REPLACE_LAST_UPDATED_ON</p>
   <br /><br />
   <br /><br />
   <br /><br />

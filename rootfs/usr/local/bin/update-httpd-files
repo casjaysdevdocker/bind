@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##@Version           :  202511300100-git
+# @@Author           :  Jason Hempstead
+# @@Contact          :  jason@casjaysdev.pro
+# @@License          :  WTFPL
+# @@ReadME           :  update-httpd-files --help
+# @@Copyright        :  Copyright: (c) 2025 Jason Hempstead, Casjays Developments
+# @@Created          :  Sunday, Nov 30, 2025 01:00 EST
+# @@File             :  update-httpd-files
+# @@Description      :  Update httpd files with last updated timestamp and DNS server status
+# @@Changelog        :  New script
+# @@TODO             :  Better documentation
+# @@Other            :
+# @@Resource         :
+# @@Terminal App     :  no
+# @@sudo/root        :  no
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# shellcheck shell=bash
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Default directories to process
+DEFAULT_DIRS="/usr/share/httpd/default /data/htdocs/www"
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Show help
+__show_help() {
+  cat <<EOF
+Usage: ${0##*/} [OPTIONS] [DIRECTORY...]
+
+Update httpd files with last updated timestamp and DNS server status.
+
+Options:
+  -h, --help    Show this help message
+  -q, --quiet   Suppress output messages
+
+Arguments:
+  DIRECTORY     One or more directories to process (default: $DEFAULT_DIRS)
+
+Examples:
+  ${0##*/}                           # Process default directories
+  ${0##*/} /var/www/html             # Process specific directory
+  ${0##*/} /var/www /usr/share/httpd # Process multiple directories
+
+EOF
+  exit 0
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Update files in a directory
+__update_httpd_files() {
+  local httpd_dir="${1:-/usr/share/httpd}"
+  local last_updated dns_status_text
+
+  # Get current date in format: Wednesday, January 29, 2025 at 11:14
+  last_updated="$(date '+%A, %B %d, %Y at %H:%M')"
+
+  # Check if named (BIND) is running
+  if pgrep -x "named" >/dev/null 2>&1 || [ -f "/run/init.d/named.pid" ]; then
+    dns_status_text="😺 DNS Server Status: Running 😺"
+  else
+    dns_status_text="🛑 DNS Server Status: Stopped 🛑"
+  fi
+
+  # Replace placeholders in all files under httpd directory
+  [ -d "$httpd_dir" ] || return 0
+  find "$httpd_dir" -type f \( -name "*.html" -o -name "*.htm" -o -name "*.php" -o -name "*.md" -o -name "*.txt" \) \
+    -exec sed -i "s|REPLACE_LAST_UPDATED_ON|$last_updated|g" {} \; \
+    -exec sed -i "s|Last updated on:.*|Last updated on: $last_updated|g" {} \; \
+    -exec sed -i "s|REPLACE_DNS_SERVER_STATUS|$dns_status_text|g" {} \; \
+    -exec sed -i "s|😺 DNS Server Status:.*😺|$dns_status_text|g" {} \; \
+    -exec sed -i "s|🛑 DNS Server Status:.*🛑|$dns_status_text|g" {} \; 2>/dev/null
+
+  [ "$QUIET" != "true" ] && echo "Processed directory: $httpd_dir"
+  return 0
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Main
+QUIET="false"
+DIRS=()
+
+# Parse arguments
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      __show_help
+      ;;
+    -q|--quiet)
+      QUIET="true"
+      shift
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)
+      DIRS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Use default directories if none specified
+if [ ${#DIRS[@]} -eq 0 ]; then
+  for dir in $DEFAULT_DIRS; do
+    DIRS+=("$dir")
+  done
+fi
+
+# Process each directory
+for dir in "${DIRS[@]}"; do
+  __update_httpd_files "$dir"
+done
+
+exit 0
