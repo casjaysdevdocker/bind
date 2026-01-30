@@ -5,10 +5,10 @@
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
-# @@ReadME           :  02-named.sh --help
+# @@ReadME           :  99-nginx.sh --help
 # @@Copyright        :  Copyright: (c) 2025 Jason Hempstead, Casjays Developments
-# @@Created          :  Sunday, Nov 30, 2025 18:41 EST
-# @@File             :  02-named.sh
+# @@Created          :  Sunday, Nov 30, 2025 18:46 EST
+# @@File             :  99-nginx.sh
 # @@Description      :  
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
@@ -46,7 +46,7 @@ __trap_err_handler() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 SCRIPT_FILE="$0"
-SERVICE_NAME="named"
+SERVICE_NAME="nginx"
 SCRIPT_NAME="$(basename -- "$SCRIPT_FILE" 2>/dev/null)"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Function to exit appropriately based on context
@@ -62,8 +62,8 @@ __script_exit() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Exit if service is disabled
-if [ -n "$NAMED_APPNAME_ENABLED" ]; then
-  if [ "$NAMED_APPNAME_ENABLED" != "yes" ]; then
+if [ -n "$NGINX_APPNAME_ENABLED" ]; then
+  if [ "$NGINX_APPNAME_ENABLED" != "yes" ]; then
     export SERVICE_DISABLED="$SERVICE_NAME"
     __script_exit 0
   fi
@@ -113,13 +113,7 @@ if [ -n "$SERVICE_NAME" ] && [ -f "/run/init.d/$SERVICE_NAME.pid" ]; then
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom functions
-__rndc_key() { grep -s 'key "rndc-key" ' /etc/bind/named.conf | grep -v 'KEY_RNDC' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
-__dhcp_key() { grep -s 'key "dhcp-key" ' /etc/bind/named.conf | grep -v 'KEY_DHCP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
-__certbot_key() { grep -s 'key "certbot" ' /etc/bind/named.conf | grep -v 'KEY_CERTBOT' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
-__backup_key() { grep -s 'key "backup-key" ' /etc/bind/named.conf | grep -v 'KEY_BACKUP' | sed 's|.*secret ||g;s|"||g;s|;.*||g' | grep '^' || return 1; }
-__tsig_key() { tsig-keygen -a hmac-${1:-sha512} | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo 'I665bFnjoPMB9EmEUl5uZ+o7e4ryM02irerkCkLJiSPJJYJBvBHSXCauNn44zY2C318DSWRcCx+tf8WESYwgKQ=='; }
-__check_dig() { dig "${1:-localhost}" "${2:-A}" | grep 'IN' | grep '[0-9][0-9]' | sed 's|.*A||g' | sed "s/^[ \t]*//" || return 2; }
-__get_dns_record() { grep '^@' "/data/bind/zones/$1.zone" | grep 'IN' | grep ' A ' | sed 's|.*A||g;s|;.*||g;s/^[ \t]*//' || return 2; }
+
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Script to execute
 START_SCRIPT="/usr/local/etc/docker/exec/$SERVICE_NAME"
@@ -132,28 +126,28 @@ WWW_ROOT_DIR="/usr/local/share/httpd/default"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default predefined variables
 # set data directory
-DATA_DIR="/data/bind"
+DATA_DIR="/data/nginx"
 # set config directory
-CONF_DIR="/config/bind"
+CONF_DIR="/config/nginx"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # set the containers etc directory
-ETC_DIR="/etc/bind"
+ETC_DIR="/etc/nginx"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # set the var dir
-VAR_DIR="/var/bind"
+VAR_DIR=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # set the temp dir
-TMP_DIR="/tmp/bind"
+TMP_DIR="/tmp/nginx"
 # set scripts pid dir
-RUN_DIR="/run/bind"
+RUN_DIR="/run/nginx"
 # set log directory
-LOG_DIR="/data/logs/bind"
+LOG_DIR="/data/logs/nginx"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the working dir
 WORK_DIR=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # port which service is listening on
-SERVICE_PORT="53"
+SERVICE_PORT="80"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User to use to launch service - IE: postgres
 # normally root
@@ -161,9 +155,9 @@ RUNAS_USER="root"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User and group in which the service switches to - IE: nginx,apache,mysql,postgres
 # execute command as another user
-SERVICE_USER="named"
+SERVICE_USER="nginx"
 # Set the service group
-SERVICE_GROUP="named"
+SERVICE_GROUP="nginx"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set password length
 RANDOM_PASS_USER=""
@@ -177,16 +171,16 @@ SERVICE_GID="0"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute command variables - keep single quotes variables will be expanded later
 # command to execute
-EXEC_CMD_BIN='named'
+EXEC_CMD_BIN='nginx'
 # command arguments
-EXEC_CMD_ARGS='-f -u $SERVICE_USER -c $ETC_DIR/named.conf'
+EXEC_CMD_ARGS='-c $ETC_DIR/nginx.conf'
 # execute script before
 EXEC_PRE_SCRIPT=''
 # Set to no if the service is not running otherwise leave blank
 SERVICE_USES_PID=''
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is this service a web server
-IS_WEB_SERVER="no"
+IS_WEB_SERVER="yes"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is this service a database server
 IS_DATABASE_SERVICE="no"
@@ -218,48 +212,38 @@ USER_FILE_PREFIX="/config/secure/auth/user"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # root/admin user info password/random]
 # root user name
-root_user_name="${NAMED_ROOT_USER_NAME:-}"
+root_user_name="${NGINX_ROOT_USER_NAME:-}"
 # root user password
-root_user_pass="${NAMED_ROOT_PASS_WORD:-}"
+root_user_pass="${NGINX_ROOT_PASS_WORD:-}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Normal user info [password/random]
 # normal user name
-user_name="${NAMED_USER_NAME:-}"
+user_name="${NGINX_USER_NAME:-}"
 # normal user password
-user_pass="${NAMED_USER_PASS_WORD:-}"
+user_pass="${NGINX_USER_PASS_WORD:-}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Load variables from config
 # Generated by my dockermgr script
-if [ -f "/config/env/named.script.sh" ]; then
-  . "/config/env/named.script.sh"
+if [ -f "/config/env/nginx.script.sh" ]; then
+  . "/config/env/nginx.script.sh"
 fi
 # Overwrite the variables
-if [ -f "/config/env/named.sh" ]; then
-  . "/config/env/named.sh"
+if [ -f "/config/env/nginx.sh" ]; then
+  . "/config/env/nginx.sh"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional predefined variables
-DNS_SERIAL="$(date +'%Y%m%d%S')"
-DNS_ZONE_FILE="$ETC_DIR/zones.conf"
-KEY_DHCP="${KEY_DHCP:-$(__dhcp_key || __tsig_key sha512)}"
-KEY_RNDC="${KEY_RNDC:-$(__rndc_key || __tsig_key sha512)}"
-KEY_BACKUP="${KEY_BACKUP:-$(__backup_key || __tsig_key sha512)}"
-KEY_CERTBOT="${KEY_CERTBOT:-$(__certbot_key || __tsig_key sha512)}"
+
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables
-DNS_TYPE="${DNS_TYPE:-primary}"
-DNS_REMOTE_SERVER="${DNS_REMOTE_SERVER:-}"
-DNS_SERVER_PRIMARY="${DNS_SERVER_PRIMARY:-}"
-DNS_SERVER_SECONDARY="${DNS_SERVER_SECONDARY:-}"
-DNS_SERVER_TRANSFER_IP="${DNS_SERVER_TRANSFER_IP:-}"
-DNS_SERVER_SECONDARY="$(echo "${DNS_SERVER_SECONDARY:-$DNS_SERVER_TRANSFER_IP}" | sed 's|,|;|g;s| |; |g;s|;$||g;s| $||g')"
+
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Specifiy custom directories to be created
 ADD_APPLICATION_FILES=""
 ADD_APPLICATION_DIRS=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPLICATION_FILES="$LOG_DIR/$SERVICE_NAME.log"
-APPLICATION_DIRS="$ETC_DIR $CONF_DIR $DATA_DIR $LOG_DIR $TMP_DIR $RUN_DIR $VAR_DIR"
+APPLICATION_DIRS="$RUN_DIR $ETC_DIR $CONF_DIR $LOG_DIR $TMP_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional config dirs - will be Copied to /etc/$name
 ADDITIONAL_CONFIG_DIRS=""
@@ -268,13 +252,10 @@ ADDITIONAL_CONFIG_DIRS=""
 CMD_ENV=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Overwrite based on file/directory
-[ -f "$CONF_DIR/secrets/rndc.key" ] && KEY_RNDC="$(grep -vE '#|^$' "$CONF_DIR/secrets/rndc.key" | sed 's| ||g' | head -n1 | grep '^' || echo "$KEY_RNDC")"
-[ -f "$CONF_DIR/secrets/dhcp.key" ] && KEY_DHCP="$(grep -vE '#|^$' "$CONF_DIR/secrets/dhcp.key" | sed 's| ||g' | head -n1 | grep '^' || echo "$KEY_DHCP")"
-[ -f "$CONF_DIR/secrets/backup.key" ] && KEY_BACKUP="$(grep -vE '#|^$' "$CONF_DIR/secrets/backup.key" | sed 's| ||g' | head -n1 | grep '^' || echo "$KEY_BACKUP")"
-[ -f "$CONF_DIR/secrets/certbot.key" ] && KEY_CERTBOT="$(grep -vE '#|^$' "$CONF_DIR/secrets/certbot.key" | sed 's| ||g' | head -n1 | grep '^' || echo "$KEY_CERTBOT")"
+
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Per Application Variables or imports
-[ -f "$CONF_DIR/named.conf" ] && NAMED_CONFIG_FILE="$CONF_DIR/named.conf" && NAMED_CONFIG_COPY="yes" || NAMED_CONFIG_FILE="$ETC_DIR/named.conf"
+
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Custom commands to run before copying to /config
 __run_precopy() {
@@ -283,11 +264,7 @@ __run_precopy() {
   if [ ! -d "/run/healthcheck" ]; then
     mkdir -p "/run/healthcheck"
   fi
-  # exit script if ENV has HTTP_ONLY=yes
-  [ "$HTTP_ONLY" = "yes" ] && __script_exit 0
   # Define actions/commands
-  [ -d "/data/named" ] && [ ! -d "$DATA_DIR" ] && mv -fv "/data/named" "$DATA_DIR"
-  [ -d "/config/named" ] && [ ! -d "$CONF_DIR" ] && mv -fv "/config/named" "$CONF_DIR"
 
   # allow custom functions
   if builtin type -t __run_precopy_local | grep -q 'function'; then
@@ -299,7 +276,6 @@ __run_precopy() {
 __execute_prerun() {
   # Define environment
   local hostname=${HOSTNAME}
-  printf '\n%s\n' "$(date)" >>"$LOG_DIR/init.txt"
   # Define actions/commands
 
   # allow custom functions
@@ -319,15 +295,7 @@ __run_pre_execute_checks() {
   __banner "$pre_execute_checks_MessageST"
   # Put command to execute in parentheses
   {
-    chown -Rf "$SERVICE_USER":"$SERVICE_GROUP" $ETC_DIR $VAR_DIR $LOG_DIR
-    if named-checkconf -z $NAMED_CONFIG_FILE &>/dev/null; then
-      echo "named-checkconf has succeeded"
-      return 0
-    else
-      echo "named-checkconf has failed:"
-      named-checkconf -z $NAMED_CONFIG_FILE
-      return 1
-    fi
+    true
   }
   exitStatus=$?
   __banner "$pre_execute_checks_MessageEnd: Status $exitStatus"
@@ -354,51 +322,21 @@ __update_conf_files() {
   local exitCode=0
   # set hostname
   local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}"
-  local secondary_ip=""
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # delete files
   #__rm ""
 
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # custom commands
-  mkdir -p "$CONF_DIR/keys" "$CONF_DIR/secrets"
-  mkdir -p "$ETC_DIR/keys" "$ETC_DIR/secrets" "$VAR_DIR/primary" "$VAR_DIR/secondary" "$VAR_DIR/stats" "$VAR_DIR/dynamic"
-  for logfile in debug.run querylog.log security.log xfer.log update.log notify.log client.log default.log general.log database.log; do
-    touch "$LOG_DIR/$logfile"
-    chmod -Rf 777 "$LOG_DIR/$logfile"
-  done
-  if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
-    for ip in ${DNS_SERVER_TRANSFER_IP//;/ }; do
-      secondary_ip+="$ip; "
-    done
-    DNS_SERVER_TRANSFER_IP="$secondary_ip"
-  fi
+
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # replace variables
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$ETC_DIR/rndc.key"
-  __replace "REPLACE_KEY_RNDC" "$KEY_RNDC" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_KEY_DHCP" "$KEY_DHCP" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_KEY_BACKUP" "$KEY_BACKUP" "$NAMED_CONFIG_FILE"
-  __replace "REPLACE_KEY_CERTBOT" "$KEY_CERTBOT" "$NAMED_CONFIG_FILE"
-  __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/primary"
-  __find_replace "REPLACE_DNS_SERIAL" "$DNS_SERIAL" "$DATA_DIR/secondary"
-  if [ -n "$DNS_SERVER_TRANSFER_IP" ]; then
-    __replace "REPLACE_DNS_SERVER_TRANSFER_IP" "$DNS_SERVER_TRANSFER_IP" "$NAMED_CONFIG_FILE"
-  else
-    sed -i '/REPLACE_DNS_SERVER_TRANSFER_IP/d' "$NAMED_CONFIG_FILE"
-  fi
+  # __replace "" "" "$CONF_DIR/nginx.conf"
+  # replace variables recursively
+  # __find_replace "" "" "$CONF_DIR"
+
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions
-  if [ -f "$CONF_DIR/custom.conf" ]; then
-    cp -f "$CONF_DIR/custom.conf" "$NAMED_CONFIG_FILE"
-  elif [ -f "$ETC_DIR/custom.conf" ]; then
-    cp -f "$ETC_DIR/custom.conf" "$NAMED_CONFIG_FILE"
-  fi
-  [ -n "$KEY_RNDC" ] && echo "$KEY_RNDC" >"$CONF_DIR/secrets/rndc.key"
-  [ -n "$KEY_DHCP" ] && echo "$KEY_DHCP" >"$CONF_DIR/secrets/dhcp.key"
-  [ -n "$KEY_BACKUP" ] && echo "$KEY_BACKUP" >"$CONF_DIR/secrets/backup.key"
-  [ -n "$KEY_CERTBOT" ] && echo "$KEY_CERTBOT" >"$CONF_DIR/secrets/certbot.key"
-  [ -f "$VAR_DIR/root.cache" ] || cp -Rf "/usr/local/share/bind/data/root.cache" "$VAR_DIR/root.cache"
 
   # allow custom functions
   if builtin type -t __update_conf_files_local | grep -q 'function'; then
@@ -414,111 +352,16 @@ __pre_execute() {
   local exitCode=0
   # set hostname
   local sysname="${SERVER_NAME:-${FULL_DOMAIN_NAME:-$HOSTNAME}}"
-  local remote_env="$(env | grep "$DNS_REMOTE_SERVER_")"
   # execute if directories is empty
   # __is_dir_empty "$CONF_DIR" && true
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # define actions to run after copying to /config
-  zone_files="$(find "$DATA_DIR/zones/" -type f 2>/dev/null | wc -l)"
-  if [ $zone_files = 0 ] && [ ! -f "$VAR_DIR/primary/$HOSTNAME.zone" ]; then
-    cat <<EOF >>"$DNS_ZONE_FILE"
-#  ********** begin $HOSTNAME **********
-zone "$HOSTNAME" {
-    type master;
-    notify yes;
-    allow-transfer { any; key "backup-key"; trusted; };
-    allow-update {key "certbot."; key "dhcp-key"; trusted; };
-    file "$VAR_DIR/primary/$HOSTNAME.zone";
-};
-#  ********** end $HOSTNAME **********
-
-EOF
-
-    cat <<EOF | tee "$VAR_DIR/primary/$HOSTNAME.zone" &>/dev/null
-; config for $HOSTNAME
-@                         IN  SOA     $HOSTNAME. root.$HOSTNAME. ( $DNS_SERIAL 10800 3600 1209600 38400)
-                          IN  NS      $HOSTNAME.
-$HOSTNAME.                IN  A       $IP4_ADDRESS
-
-EOF
-  fi
-  #
-  if [ -d "$DATA_DIR/zones" ]; then
-    for dns_file in "$DATA_DIR/zones"/*; do
-      file_name="$(basename "$dns_file")"
-      domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
-      if [ -f "$dns_file" ]; then
-        if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
-          if [ "$DNS_TYPE" = "secondary" ]; then
-            [ -f "$VAR_DIR/secondary/$file_name" ] || echo "" >"$VAR_DIR/secondary/$file_name"
-            cat <<EOF >>"$DNS_ZONE_FILE"
-#  ********** begin $domain_name **********
-zone "$domain_name" {
-    type slave;
-    masters { $DNS_SERVER_PRIMARY; };
-    file "$VAR_DIR/secondary/$file_name";
-};
-#  ********** end $domain_name **********
-
-EOF
-          else
-            cp -Rf "$dns_file" "$VAR_DIR/primary/$file_name"
-            if [ -n "$DNS_SERVER_SECONDARY" ]; then
-              cat <<EOF >>"$DNS_ZONE_FILE"
-#  ********** begin $domain_name **********
-zone "$domain_name" {
-    type master;
-    notify yes;
-    also-notify { $DNS_SERVER_SECONDARY; };
-    allow-transfer { any; key "backup-key"; trusted; };
-    allow-update { key "certbot."; key "dhcp-key"; trusted; key "ddns-key"; };
-    file "$VAR_DIR/primary/$file_name";
-};
-#  ********** end $domain_name **********
-
-EOF
-            else
-              cat <<EOF >>"$DNS_ZONE_FILE"
-#  ********** begin $domain_name **********
-zone "$domain_name" {
-    type master;
-    notify yes;
-    allow-transfer { any; key "backup-key"; trusted; };
-    allow-update { key "certbot."; key "dhcp-key"; trusted; key "ddns-key"; };
-    file "$VAR_DIR/primary/$file_name";
-};
-#  ********** end $domain_name **********
-
-EOF
-            fi
-          fi
-          grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Added $domain_name to $DNS_ZONE_FILE"
-        fi
-      fi
-    done
-  fi
-
-  if [ -d "$DATA_DIR/remote" ]; then
-    for dns_file in "$DATA_DIR/remote"/*; do
-      if [ -s "$dns_file" ]; then
-        file_name="$(basename "$dns_file")"
-        domain_name="$(basename "${dns_file%.*}")"
-        if [ -n "$domain_name" ]; then
-          cat "$dns_file" | sed 's|REPLACE_VAR_DIR|'$VAR_DIR'|g' >>"$DNS_ZONE_FILE"
-          grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
-        else
-          echo "Failed to get domain name from $dns_file" | tee -a "$LOG_DIR/init.txt" >&2
-        fi
-      fi
-    done
-  fi
-  [ "$NAMED_CONFIG_COPY" = "yes" ] && cp -Rf "$NAMED_CONFIG_FILE" "$ETC_DIR/named.conf" || cp -Rf "$NAMED_CONFIG_FILE" "$CONF_DIR/named.conf"
 
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # unset unneeded variables
   unset sysname
   # Lets wait a few seconds before continuing
-  sleep 5
+  sleep 2
   # allow custom functions
   if builtin type -t __pre_execute_local | grep -q 'function'; then
     __pre_execute_local
@@ -602,14 +445,14 @@ __create_service_env() {
     cat <<EOF | tee -p "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh" &>/dev/null
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # root/admin user info [password/random]
-#ENV_ROOT_USER_NAME="${ENV_ROOT_USER_NAME:-$NAMED_ROOT_USER_NAME}"   # root user name
-#ENV_ROOT_USER_PASS="${ENV_ROOT_USER_NAME:-$NAMED_ROOT_PASS_WORD}"   # root user password
+#ENV_ROOT_USER_NAME="${ENV_ROOT_USER_NAME:-$NGINX_ROOT_USER_NAME}"   # root user name
+#ENV_ROOT_USER_PASS="${ENV_ROOT_USER_NAME:-$NGINX_ROOT_PASS_WORD}"   # root user password
 #root_user_name="${ENV_ROOT_USER_NAME:-$root_user_name}"                              #
 #root_user_pass="${ENV_ROOT_USER_PASS:-$root_user_pass}"                              #
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 #Normal user info [password/random]
-#ENV_USER_NAME="${ENV_USER_NAME:-$NAMED_USER_NAME}"                  #
-#ENV_USER_PASS="${ENV_USER_PASS:-$NAMED_USER_PASS_WORD}"             #
+#ENV_USER_NAME="${ENV_USER_NAME:-$NGINX_USER_NAME}"                  #
+#ENV_USER_PASS="${ENV_USER_PASS:-$NGINX_USER_PASS_WORD}"             #
 #user_name="${ENV_USER_NAME:-$user_name}"                                             # normal user name
 #user_pass="${ENV_USER_PASS:-$user_pass}"                                             # normal user password
 
