@@ -19,17 +19,17 @@ dockermgr update bind
 ## Install and run container
   
 ```shell
-mkdir -p "$HOME/.local/share/srv/docker/bind/rootfs"
+mkdir -p "$HOME/.local/share/srv/docker/bind/volumes"
 git clone "https://github.com/dockermgr/bind" "$HOME/.local/share/CasjaysDev/dockermgr/bind"
-cp -Rfva "$HOME/.local/share/CasjaysDev/dockermgr/bind/rootfs/." "$HOME/.local/share/srv/docker/bind/rootfs/"
+cp -Rfva "$HOME/.local/share/CasjaysDev/dockermgr/bind/rootfs/." "$HOME/.local/share/srv/docker/bind/volumes/"
 docker run -d \
 --restart always \
 --privileged \
 --name casjaysdevdocker-bind \
 --hostname bind \
 -e TZ=${TIMEZONE:-America/New_York} \
--v "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/rootfs/data:/data:z" \
--v "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/rootfs/config:/config:z" \
+-v "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/volumes/data:/data:z" \
+-v "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/volumes/config:/config:z" \
 -p 80:80 \
 casjaysdevdocker/bind:latest
 ```
@@ -46,8 +46,8 @@ services:
       - TZ=America/New_York
       - HOSTNAME=bind
     volumes:
-      - "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/rootfs/data:/data:z"
-      - "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/rootfs/config:/config:z"
+      - "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/volumes/data:/data:z"
+      - "$HOME/.local/share/srv/docker/casjaysdevdocker-bind/volumes/config:/config:z"
     ports:
       - 80:80
     restart: always
