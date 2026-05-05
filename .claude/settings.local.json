@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tee /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/functions/entrypoint.sh)",
+      "Bash(tee /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/bin/entrypoint.sh)",
+      "Bash(tee *)",
+      "Bash(bash /tmp/gen_init_tor.sh)",
+      "Bash(bash /tmp/gen_init_named.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/init.d/01-tor.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/init.d/02-named.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/init.d/03-nginx.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/init.d/04-php-fpm.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/init.d/start-service.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/bin/entrypoint.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/functions/entrypoint.sh)",
+      "Bash(bash -n /root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/bin/pkmgr)",
+      "Bash(python3 -c \"import os; os.remove\\('/root/Projects/github/casjaysdevdocker/bind/rootfs/usr/local/etc/docker/init.d/start-service.sh'\\)\")",
+      "Bash(dig @127.0.0.1 -p 15300 bind.test.local +short +time=3 +tries=1)",
+      "Bash(dig @127.0.0.1 -p 15300 bind.test.local SOA +noall +answer +time=3 +tries=1)",
+      "Bash(dig @127.0.0.1 -p 15300 bind. SOA +noall +answer +time=3 +tries=1)",
+      "Bash(python3 -c \"import os; os.remove\\('/root/Projects/github/casjaysdevdocker/bind/rootfs/tmp/etc/nginx/real_ip.conf'\\); os.remove\\('/root/Projects/github/casjaysdevdocker/bind/rootfs/tmp/etc/nginx/fastcgi_params'\\)\")",
+      "Bash(dig @127.0.0.1 -p 15300 bind. A +short +time=4 +tries=1)",
+      "Bash(dig @127.0.0.1 -p 15300 duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion +short +time=5 +tries=1)",
+      "Read(//etc/docker/**)",
+      "Bash(python3 -c 'import json; json.load\\(open\\(\"/etc/docker/daemon.json\"\\)\\); print\\(\"OK\"\\)')",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}

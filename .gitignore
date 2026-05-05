@@ -1,6 +1,9 @@
-# gitignore created on 08/27/24 at 09:03
+# gitignore created on 05/05/26 at 14:38
 # Disable reminder in prompt
 ignoredirmessage
+
+# ignore .build_failed files
+**/.build_failed*
 
 # OS generated files
 ### Linux ###
@@ -83,7 +86,6 @@ $RECYCLE.BIN/
 # ignore .build_failed files
 **/.build_failed*
 
-
 # ignore .bak files
 **/*.bak
 
@@ -95,4 +97,8 @@ $RECYCLE.BIN/
 
 # ignore .installed files
 **/.installed
+
+# ignore work in progress files
+**/*.rewrite.sh
+**/*.refactor.sh
 

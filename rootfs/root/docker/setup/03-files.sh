@@ -1,36 +1,37 @@
 #!/usr/bin/env bash
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202408270903-git
+# shellcheck shell=bash
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+##@Version           :  202605051438-git
 # @@Author           :  CasjaysDev
 # @@Contact          :  CasjaysDev <docker-admin@casjaysdev.pro>
 # @@License          :  MIT
-# @@ReadME           :
-# @@Copyright        :  Copyright 2023 CasjaysDev
-# @@Created          :  Mon Aug 28 06:48:42 PM EDT 2023
+# @@Copyright        :  Copyright 2026 CasjaysDev
+# @@Created          :  Tue May  5 02:38:04 PM EDT 2026
 # @@File             :  03-files.sh
 # @@Description      :  script to run files
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# shellcheck shell=bash
-# shellcheck disable=SC2016
-# shellcheck disable=SC2031
-# shellcheck disable=SC2120
-# shellcheck disable=SC2155
-# shellcheck disable=SC2199
-# shellcheck disable=SC2317
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# @@Changelog        :  newScript
+# @@TODO             :  Refactor code
+# @@Other            :  N/A
+# @@Resource         :  N/A
+# @@Terminal App     :  yes
+# @@sudo/root        :  yes
+# @@Template         :  templates/dockerfiles/init_scripts/03-files.sh
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set bash options
 set -o pipefail
 [ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -x$DEBUGGER_OPTIONS
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set env variables
 exitCode=0
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Predifined actions
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Predefined actions
 if [ -d "/tmp/bin" ]; then
   mkdir -p "/usr/local/bin"
   for bin in "/tmp/bin"/*; do
-    name="$(basename "$bin")"
+    name="$(basename -- "$bin")"
     echo "Installing $name to /usr/local/bin/$name"
     copy "$bin" "/usr/local/bin/$name"
     chmod -f +x "/usr/local/bin/$name"
@@ -39,7 +40,7 @@ fi
 unset bin
 if [ -d "/tmp/var" ]; then
   for var in "/tmp/var"/*; do
-    name="$(basename "$var")"
+    name="$(basename -- "$var")"
     echo "Installing $var to /var/$name"
     if [ -d "$var" ]; then
       mkdir -p "/var/$name"
@@ -51,9 +52,8 @@ if [ -d "/tmp/var" ]; then
 fi
 unset var
 if [ -d "/tmp/etc" ]; then
-  mkdir -p "/usr/local/share/template-files/config"
   for config in "/tmp/etc"/*; do
-    name="$(basename "$config")"
+    name="$(basename -- "$config")"
     echo "Installing $config to /etc/$name"
     if [ -d "$config" ]; then
       mkdir -p "/etc/$name"
@@ -68,9 +68,8 @@ if [ -d "/tmp/etc" ]; then
 fi
 unset config
 if [ -d "/tmp/data" ]; then
-  mkdir -p "/usr/local/share/template-files/data"
   for data in "/tmp/data"/*; do
-    name="$(basename "$data")"
+    name="$(basename -- "$data")"
     echo "Installing $data to /usr/local/share/template-files/data"
     if [ -d "$data" ]; then
       mkdir -p "/usr/local/share/template-files/data/$name"
@@ -81,11 +80,15 @@ if [ -d "/tmp/data" ]; then
   done
 fi
 unset data
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the exit code
-exitCode=$?
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#exitCode=$?
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 exit $exitCode
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# ex: ts=2 sw=2 et filetype=sh
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+

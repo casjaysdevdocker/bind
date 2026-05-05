@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202511301726-git
+##@Version           :  202602061352-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
-# @@License          :  LICENSE.md
-# @@ReadME           :  01-tor.sh --help
-# @@Copyright        :  Copyright: (c) 2025 Jason Hempstead, Casjays Developments
-# @@Created          :  Sunday, Nov 30, 2025 18:46 EST
-# @@File             :  01-tor.sh
+# @@License          :  WTFPL
+# @@ReadME           :  start-service.sh --help
+# @@Copyright        :  Copyright: (c) 2026 Jason Hempstead, Casjays Developments
+# @@Created          :  Tuesday, May 05, 2026 14:38 EDT
+# @@File             :  start-service.sh
 # @@Description      :  
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
@@ -26,28 +26,31 @@ set -e
 trap '__trap_err_handler' ERR
 trap 'retVal=$?;if [ "$SERVICE_IS_RUNNING" != "yes" ] && [ -f "$SERVICE_PID_FILE" ]; then rm -Rf "$SERVICE_PID_FILE"; fi;exit $retVal' SIGINT SIGTERM SIGPWR
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# ERR trap handler - only fail on critical errors
+# ERR trap handler - smart about critical vs non-critical errors
 __trap_err_handler() {
   local retVal=$?
-  local line_number=$LINENO
   local command="$BASH_COMMAND"
-  if [ $retVal -gt 0 ] && [ $retVal -ne 130 ] && [ $retVal -ne 141 ]; then
-    if [[ "$command" =~ (mkdir|touch|chmod|chown|ln|cp|mv|rm|echo|printf|cat|tee|sed|awk|grep) ]]; then
-      echo "⚠️ Non-critical command failed (continuing): $command" >&2
-      return 0
-    else
-      echo "❌ Fatal error occurred: Exit code $retVal at line $line_number in command: $command" >&2
-      if [ "$SERVICE_IS_RUNNING" != "yes" ]; then
-        kill -TERM 1 2>/dev/null || true
-      fi
-    fi
+  # Ignore SIGPIPE and user interrupts
+  [ $retVal -eq 130 ] || [ $retVal -eq 141 ] && return $retVal
+  # Non-critical: file operations, text processing, user/group operations
+  if [[ "$command" =~ (mkdir|touch|chmod|chown|chgrp|ln|cp|mv|rm|echo|printf|cat|tee|sed|awk|grep|find|sort|uniq|adduser|addgroup|usermod|groupmod|id|getent) ]]; then
+    return 0
   fi
-  return $retVal
+  # Non-critical: conditional checks that might fail
+  if [[ "$command" =~ (test|\[|\[\[|kill -0|pgrep|pidof|ps) ]]; then
+    return 0
+  fi
+  # Critical error - but only fail if service hasn't started yet
+  if [ "$SERVICE_IS_RUNNING" != "yes" ]; then
+    echo "❌ Critical error (exit $retVal): $command" >&2
+    kill -TERM 1 2>/dev/null || exit $retVal
+  fi
+  return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 SCRIPT_FILE="$0"
 SERVICE_NAME="tor"
-SCRIPT_NAME="$(basename -- "$SCRIPT_FILE" 2>/dev/null)"
+SCRIPT_NAME="${SCRIPT_FILE##*/}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Function to exit appropriately based on context
 __script_exit() {
@@ -70,18 +73,8 @@ if [ -n "$TOR_APPNAME_ENABLED" ]; then
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # setup debugging - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
-if [ -f "/config/.debug" ] && [ -z "$DEBUGGER_OPTIONS" ]; then
-  export DEBUGGER_OPTIONS="$(<"/config/.debug")"
-else
-  DEBUGGER_OPTIONS="${DEBUGGER_OPTIONS:-}"
-fi
-if [ "$DEBUGGER" = "on" ] || [ -f "/config/.debug" ]; then
-  echo "Enabling debugging"
-  set -xo pipefail -x$DEBUGGER_OPTIONS
-  export DEBUGGER="on"
-else
-  set -o pipefail
-fi
+[ -f "/config/.debug" ] && [ -z "$DEBUGGER_OPTIONS" ] && export DEBUGGER_OPTIONS="$(<"/config/.debug")" || DEBUGGER_OPTIONS="${DEBUGGER_OPTIONS:-}"
+{ [ "$DEBUGGER" = "on" ] || [ -f "/config/.debug" ]; } && echo "Enabling debugging" && set -xo pipefail -x$DEBUGGER_OPTIONS && export DEBUGGER="on" || set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 export PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -98,7 +91,7 @@ for set_env in "/root/env.sh" "/usr/local/etc/docker/env"/*.sh "/config/env"/*.s
 done
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # exit if __start_init_scripts function hasn't been Initialized
-if [ ! -f "/run/__start_init_scripts.pid" ]; then
+if [ ! -f "/run/.start_init_scripts.pid" ]; then
   echo "__start_init_scripts function hasn't been Initialized" >&2
   SERVICE_IS_RUNNING="no"
   __script_exit 1
@@ -176,7 +169,7 @@ EXEC_CMD_BIN='tor'
 EXEC_CMD_ARGS='-f $ETC_DIR/torrc'
 # execute script before
 EXEC_PRE_SCRIPT=''
-# Set to no if the service is not running otherwise leave blank
+# Set to 'no' for configuration services (no daemon process), leave blank for actual services
 SERVICE_USES_PID=''
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is this service a web server
@@ -519,30 +512,31 @@ __run_start_script() {
   if [ -z "$cmd" ]; then
     __post_execute 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt"
     retVal=$?
-    echo "Initializing $SCRIPT_NAME has completed"
+    __log_info "Initialization of $SCRIPT_NAME has completed"
     __script_exit $retVal
   else
     # ensure the command exists
     if [ ! -x "$cmd" ]; then
-      echo "$name is not a valid executable"
+      __log_error "$name is not a valid executable"
       return 2
     fi
-    # check and exit if already running
+    # check and exit if already running (respects SERVICE_USES_PID in __proc_check)
     if __proc_check "$name" || __proc_check "$cmd"; then
+      __log_debug "Service $name is already running"
       return 0
     else
       # - - - - - - - - - - - - - - - - - - - - - - - - -
       # show message if env exists
       if [ -n "$cmd" ]; then
         if [ -n "$SERVICE_USER" ]; then
-          echo "Setting up $cmd to run as $SERVICE_USER"
+          __log_info "Setting up $cmd to run as $SERVICE_USER"
         else
           SERVICE_USER="root"
         fi
         if [ -n "$SERVICE_PORT" ]; then
-          echo "$name will be running on port $SERVICE_PORT"
+          __log_info "$name will be running on port $SERVICE_PORT"
         else
-          SERVICE_PORT=""
+          SERVICE_PORT="9053"
         fi
       fi
       if [ -n "$pre" ] && [ -n "$(command -v "$pre" 2>/dev/null)" ]; then
@@ -553,9 +547,9 @@ __run_start_script() {
         message="Starting service: $name $args"
       fi
       if [ -n "$su_exec" ]; then
-        echo "using $su_exec" | tee -a -p "/data/logs/init.txt"
+        __log_debug "Using $su_exec" | tee -a -p "/data/logs/init.txt"
       fi
-      echo "$message" | tee -a -p "/data/logs/init.txt"
+      __log_info "$message" | tee -a -p "/data/logs/init.txt"
       su_cmd touch "$SERVICE_PID_FILE"
       if [ "$RESET_ENV" = "yes" ]; then
         env_command="$(echo "env -i HOME=\"$home\" LC_CTYPE=\"$lc_type\" PATH=\"$path\" HOSTNAME=\"$sysname\" USER=\"${SERVICE_USER:-$RUNAS_USER}\" $extra_env")"
@@ -656,7 +650,7 @@ fi
 # default exit code
 SERVICE_EXIT_CODE=0
 # application specific
-EXEC_CMD_NAME="$(basename -- "$EXEC_CMD_BIN")"
+EXEC_CMD_NAME="${EXEC_CMD_BIN##*/}"
 SERVICE_PID_FILE="/run/init.d/$EXEC_CMD_NAME.pid"
 SERVICE_PID_NUMBER="$(__pgrep "$EXEC_CMD_NAME" 2>/dev/null || echo '')"
 if type -P "$EXEC_CMD_BIN" &>/dev/null; then
@@ -923,9 +917,7 @@ __pre_execute
 __fix_permissions "$SERVICE_USER" "$SERVICE_GROUP"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 #
-if ! __run_pre_execute_checks 2>/dev/stderr | tee -a -p "/data/logs/entrypoint.log" "/data/logs/init.txt"; then
-  return 20
-fi
+__run_pre_execute_checks 2>/dev/stderr | tee -a -p "/data/logs/entrypoint.log" "/data/logs/init.txt" || return 20
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __run_start_script 2>>/dev/stderr | tee -p -a "/data/logs/entrypoint.log"
 errorCode=$?

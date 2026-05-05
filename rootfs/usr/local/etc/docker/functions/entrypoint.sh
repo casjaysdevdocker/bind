@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202511301726-git
+##@Version           :  202602061352-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  git-admin@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -33,6 +33,19 @@ fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __remove_extra_spaces() { sed 's/\( \)*/\1/g;s|^ ||g'; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__log_debug() {
+  [ "$DEBUGGER" = "on" ] && echo "[DEBUG] $*" >&2
+}
+__log_info() {
+  echo "[INFO] $*"
+}
+__log_warn() {
+  echo "[WARN] $*" >&2
+}
+__log_error() {
+  echo "[ERROR] $*" >&2
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 __printf_space() {
   local pad=$(printf '%0.1s' " "{1..60})
   local padlength=$1
@@ -47,13 +60,21 @@ __printf_space() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __mkdir() {
   if [ -n "$1" ]; then
-    mkdir -p "$@" 2>/dev/null || true
+    if ! mkdir -p "$@" 2>/dev/null; then
+      [ "$DEBUGGER" = "on" ] && echo "Warning: Failed to create directory: $*" >&2
+      return 1
+    fi
   fi
+  return 0
 }
 __rm() {
   if [ -n "$1" ] && [ -e "$1" ]; then
-    rm -Rf "${1:?}" 2>/dev/null || true
+    if ! rm -Rf "${1:?}" 2>/dev/null; then
+      [ "$DEBUGGER" = "on" ] && echo "Warning: Failed to remove: $1" >&2
+      return 1
+    fi
   fi
+  return 0
 }
 __grep_test() {
   if grep -sh "$1" "$2" 2>/dev/null | grep -qwF "${3:-$1}"; then
@@ -63,9 +84,10 @@ __grep_test() {
   fi
 }
 __netstat() {
-  if [ -f "$(type -P netstat 2>/dev/null)" ]; then
+  if [ -n "$(command -v netstat 2>/dev/null)" ]; then
     netstat "$@" 2>/dev/null
   else
+    [ "$DEBUGGER" = "on" ] && echo "Warning: netstat command not found" >&2
     return 10
   fi
 }
@@ -227,11 +249,16 @@ __is_running() {
 }
 __get_pid() {
   local result=""
+  if [ -z "$1" ]; then
+    [ "$DEBUGGER" = "on" ] && echo "Warning: __get_pid called without process name" >&2
+    return 1
+  fi
   result="$(ps -ax --no-header 2>/dev/null | sed 's/^[[:space:]]*//g;s|;||g;s|:||g' | awk '{print $1,$5}' | sed 's|:||g' | grep "$1$" | grep -v 'grep' | awk -F' ' '{print $1}' | grep '[0-9]' | sort -uV | head -n1 | grep '.' 2>/dev/null || echo '')"
   if [ -n "$result" ]; then
     echo "$result"
     return 0
   else
+    [ "$DEBUGGER" = "on" ] && echo "Debug: No PID found for process: $1" >&2
     return 1
   fi
 }
@@ -253,11 +280,11 @@ __no_exit() {
   local failed_services=""
   local failure_count=0
 
-  [ -f "/run/no_exit.pid" ] && return 0
+  [ -f "/run/.no_exit.pid" ] && return 0
 
   exec bash -c "
-    trap 'echo \"Container shutdown requested\"; rm -f /run/no_exit.pid /run/*.pid; exit 0' TERM INT
-    echo \$\$ > /run/no_exit.pid
+    trap 'echo \"Container shutdown requested\"; rm -f /run/.no_exit.pid /run/*.pid; exit 0' TERM INT
+    echo \$\$ > /run/.no_exit.pid
 
     while true; do
       if [ -n \"$monitor_services\" ] && [ \"$monitor_services\" != \"tini\" ]; then
@@ -327,7 +354,7 @@ __find_pgsql_conf() { find -L '/var/lib' '/etc' -maxdepth 8 -type f -name 'postg
 __find_couchdb_conf() { return; }
 __find_mongodb_conf() { return; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-__random_password() { cat "/dev/urandom" | tr -dc '0-9a-zA-Z' | head -c${1:-16} && echo ""; }
+__random_password() { tr -dc '0-9a-zA-Z' < /dev/urandom | head -c${1:-16} && echo ""; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __init_working_dir() {
   local service_name="$SERVICE_NAME"                           # get service name
@@ -632,7 +659,7 @@ __cron() {
   fi
   [ $# -eq 0 ] && echo "Usage: cron [interval] [command]" && exit 1
   local command="$*"
-  local bin="$(basename "${CRON_NAME:-$1}")"
+  local bin="${CRON_NAME:-$1}"; bin="${bin##*/}"
   [ -d "/run/cron" ] || mkdir -p "/run/cron"
   echo "$pid" >"/run/cron/$bin.pid"
   echo "$command" >"/run/cron/$bin.run"
@@ -777,16 +804,20 @@ __fix_permissions() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __get_gid() { grep "^$1:" /etc/group 2>/dev/null | awk -F ':' '{print $3}' || return 1; }
 __get_uid() { grep "^$1:" /etc/passwd 2>/dev/null | awk -F ':' '{print $3}' || return 1; }
-__check_for_uid() { cat "/etc/passwd" 2>/dev/null | awk -F ':' '{print $3}' | sort -u | grep -q "^$1$" 2>/dev/null || return 1; }
-__check_for_guid() { cat "/etc/group" 2>/dev/null | awk -F ':' '{print $3}' | sort -u | grep -q "^$1$" 2>/dev/null || return 1; }
-__check_for_user() { cat "/etc/passwd" 2>/dev/null | awk -F ':' '{print $1}' | sort -u | grep -q "^$1$" 2>/dev/null || return 1; }
-__check_for_group() { cat "/etc/group" 2>/dev/null | awk -F ':' '{print $1}' | sort -u | grep -q "^$1$" 2>/dev/null || return 1; }
+__check_for_uid() { awk -F ':' '{print $3}' /etc/passwd 2>/dev/null | sort -u | grep -q "^$1$" || return 1; }
+__check_for_guid() { awk -F ':' '{print $3}' /etc/group 2>/dev/null | sort -u | grep -q "^$1$" || return 1; }
+__check_for_user() { awk -F ':' '{print $1}' /etc/passwd 2>/dev/null | sort -u | grep -q "^$1$" || return 1; }
+__check_for_group() { awk -F ':' '{print $1}' /etc/group 2>/dev/null | sort -u | grep -q "^$1$" || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check if process is already running
 __proc_check() {
+  # Skip process check for one-shot/configuration services
+  if [ "$SERVICE_USES_PID" = "no" ]; then
+    return 1
+  fi
   local cmd_bin cmd_name check_result
   cmd_bin="$(type -P "${1:-$EXEC_CMD_BIN}" 2>/dev/null || echo "${1:-$EXEC_CMD_BIN}")"
-  cmd_name="$(basename "${cmd_bin:-${1:-$EXEC_CMD_NAME}}" 2>/dev/null)"
+  cmd_name="${cmd_bin:-${1:-$EXEC_CMD_NAME}}"; cmd_name="${cmd_name##*/}"
   if [ -z "$cmd_name" ] || [ "$cmd_name" = "." ]; then
     return 1
   fi
@@ -858,11 +889,11 @@ __create_service_user() {
     return 0
   fi
   # Validate user/group name format (alphanumeric, underscore, hyphen; must start with letter or underscore)
-  if [ -n "$create_user" ] && ! echo "$create_user" | grep -qE '^[a-z_][a-z0-9_-]*$'; then
+  if [ -n "$create_user" ] && [[ ! "$create_user" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
     echo "Error: Invalid username format '$create_user' - must start with letter/underscore, contain only lowercase alphanumeric, underscore, or hyphen" >&2
     return 1
   fi
-  if [ -n "$create_group" ] && ! echo "$create_group" | grep -qE '^[a-z_][a-z0-9_-]*$'; then
+  if [ -n "$create_group" ] && [[ ! "$create_group" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
     echo "Error: Invalid group name format '$create_group' - must start with letter/underscore, contain only lowercase alphanumeric, underscore, or hyphen" >&2
     return 1
   fi
@@ -892,11 +923,11 @@ __create_service_user() {
     create_gid="$random_id"
   fi
   # Validate UID/GID are numeric and within valid range
-  if ! echo "$create_uid" | grep -qE '^[0-9]+$' || [ "$create_uid" -lt 1 ] || [ "$create_uid" -gt 65534 ]; then
+  if [[ ! "$create_uid" =~ ^[0-9]+$ ]] || [ "$create_uid" -lt 1 ] || [ "$create_uid" -gt 65534 ]; then
     echo "Error: Invalid UID '$create_uid' - must be a number between 1 and 65534" >&2
     return 1
   fi
-  if ! echo "$create_gid" | grep -qE '^[0-9]+$' || [ "$create_gid" -lt 1 ] || [ "$create_gid" -gt 65534 ]; then
+  if [[ ! "$create_gid" =~ ^[0-9]+$ ]] || [ "$create_gid" -lt 1 ] || [ "$create_gid" -gt 65534 ]; then
     echo "Error: Invalid GID '$create_gid' - must be a number between 1 and 65534" >&2
     return 1
   fi
@@ -1029,13 +1060,13 @@ __start_init_scripts() {
   local retstatus="0"
   local initStatus="0"
   local critical_failures="0"
-  local pidFile="/run/__start_init_scripts.pid"
+  local pidFile="/run/.start_init_scripts.pid"
   local init_dir="${1:-/usr/local/etc/docker/init.d}"
   local init_count="$(ls -A "$init_dir"/* 2>/dev/null | grep -v '\.sample' | wc -l)"
   local exit_on_failure="${EXIT_ON_SERVICE_FAILURE:-true}"
 
   # Clean stale PID files from previous runs
-  if [ ! -f "/run/__start_init_scripts.pid" ]; then
+  if [ ! -f "/run/.start_init_scripts.pid" ]; then
     echo "🧹 Cleaning stale PID files from previous container run"
     rm -f /run/*.pid /run/init.d/*.pid 2>/dev/null || true
   fi
@@ -1059,9 +1090,9 @@ __start_init_scripts() {
       for init in "$init_dir"/*.sh; do
         if [ -x "$init" ]; then
           touch "$pidFile"
-          name="$(basename "$init")"
+          name="${init##*/}"
           service="$(printf '%s' "$name" | sed 's/^[^-]*-//;s|.sh$||g')"
-          __service_banner "🔧" "Executing service script:" "$(basename "$init")"
+          __service_banner "🔧" "Executing service script:" "${init##*/}"
           # Execute the init script and capture the exit code
           if source "$init"; then
             # Check if service was disabled first
@@ -1075,14 +1106,15 @@ __start_init_scripts() {
               __service_banner "✅" "Service $service completed successfully -" "configuration service"
             else
               # Allow some time for service to initialize
-              sleep 2
+              sleep 1
               # Check for service success indicators
               local expected_pid_file="/run/init.d/$service.pid"
               set +e
+              # Check if this is a configuration service (no daemon process expected)
               if [ "$SERVICE_USES_PID" = "no" ]; then
-                # Service doesn't use PID files - assume success unless explicitly failed
+                # Configuration service - no daemon process expected
                 initStatus="0"
-                __service_banner "✅" "Service $service completed successfully -" "no PID tracking required"
+                __service_banner "✅" "Service $service completed successfully -" "configuration service"
               else
                 # Service uses PID tracking - verify actual running processes
                 retPID=""
@@ -1327,7 +1359,7 @@ __initialize_database() {
   __find_replace "REPLACE_DATABASE_ROOT_PASS" "$db_admin_pass" "$dir"
   __find_replace "REPLACE_DATABASE_NAME" "$DATABASE_NAME" "$dir"
   __find_replace "REPLACE_DATABASE_DIR" "$DATABASE_DIR" "$dir"
-  if echo "$dir" | grep -q '^/etc'; then
+  if [[ "$dir" == "/etc"* ]]; then
     __find_replace "REPLACE_USER_NAME" "$db_normal_user" "/etc"
     __find_replace "REPLACE_USER_PASS" "$db_normal_pass" "/etc"
     __find_replace "REPLACE_DATABASE_USER" "$db_normal_user" "/etc"
@@ -1389,7 +1421,7 @@ __initialize_custom_bin_dir() {
     echo "Setting up bin $SET_USR_BIN > $LOCAL_BIN_DIR"
     for create_bin_template in $SET_USR_BIN; do
       if [ -n "$create_bin_template" ]; then
-        create_bin_name="$(basename "$create_bin_template")"
+        create_bin_name="${create_bin_template##*/}"
         if [ -e "$create_bin_template" ]; then
           ln -sf "$create_bin_template" "$LOCAL_BIN_DIR/$create_bin_name"
         fi
@@ -1400,51 +1432,85 @@ __initialize_custom_bin_dir() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_default_templates() {
+  local errors=0
   if [ -n "$DEFAULT_TEMPLATE_DIR" ]; then
     if [ "$CONFIG_DIR_INITIALIZED" = "false" ] && [ -d "/config" ]; then
-      echo "Copying default config files $DEFAULT_TEMPLATE_DIR > /config"
+      __log_info "Copying default config files $DEFAULT_TEMPLATE_DIR > /config"
+      if [ ! -d "$DEFAULT_TEMPLATE_DIR" ]; then
+        __log_warn "Template directory not found: $DEFAULT_TEMPLATE_DIR"
+        return 0
+      fi
       for create_config_template in "$DEFAULT_TEMPLATE_DIR"/*; do
-        if [ -n "$create_config_template" ]; then
-          create_template_name="$(basename "$create_config_template")"
+        if [ -e "$create_config_template" ]; then
+          create_template_name="${create_config_template##*/}"
           if [ -d "$create_config_template" ]; then
-            mkdir -p "/config/$create_template_name/"
-            __is_dir_empty "/config/$create_template_name" && cp -Rf "$create_config_template/." "/config/$create_template_name/" 2>/dev/null
-          elif [ -e "$create_config_template" ]; then
-            [ -e "/config/$create_template_name" ] || cp -Rf "$create_config_template" "/config/$create_template_name" 2>/dev/null
+            mkdir -p "/config/$create_template_name/" || errors=$((errors + 1))
+            if __is_dir_empty "/config/$create_template_name"; then
+              if ! cp -Rf "$create_config_template/." "/config/$create_template_name/" 2>/dev/null; then
+                __log_warn "Failed to copy template directory: $create_template_name"
+                errors=$((errors + 1))
+              fi
+            fi
+          elif [ -f "$create_config_template" ]; then
+            if [ ! -e "/config/$create_template_name" ]; then
+              if ! cp -Rf "$create_config_template" "/config/$create_template_name" 2>/dev/null; then
+                __log_warn "Failed to copy template file: $create_template_name"
+                errors=$((errors + 1))
+              fi
+            fi
           fi
         fi
       done
       unset create_config_template create_template_name
+      __log_debug "Template initialization completed with $errors errors"
     fi
   fi
+  return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_config_dir() {
+  local errors=0
   if [ -n "$DEFAULT_CONF_DIR" ]; then
     if [ "$CONFIG_DIR_INITIALIZED" = "false" ] && [ -d "/config" ]; then
-      echo "Copying custom config files: $DEFAULT_CONF_DIR > /config"
+      __log_info "Copying custom config files: $DEFAULT_CONF_DIR > /config"
+      if [ ! -d "$DEFAULT_CONF_DIR" ]; then
+        __log_warn "Config directory not found: $DEFAULT_CONF_DIR"
+        return 0
+      fi
       for create_config_template in "$DEFAULT_CONF_DIR"/*; do
-        create_config_name="$(basename "$create_config_template")"
-        if [ -n "$create_config_template" ]; then
+        if [ -e "$create_config_template" ]; then
+          create_config_name="${create_config_template##*/}"
           if [ -d "$create_config_template" ]; then
-            mkdir -p "/config/$create_config_name"
-            __is_dir_empty "/config/$create_config_name" && cp -Rf "$create_config_template/." "/config/$create_config_name/" 2>/dev/null
-          elif [ -e "$create_config_template" ]; then
-            [ -e "/config/$create_config_name" ] || cp -Rf "$create_config_template" "/config/$create_config_name" 2>/dev/null
+            mkdir -p "/config/$create_config_name" || errors=$((errors + 1))
+            if __is_dir_empty "/config/$create_config_name"; then
+              if ! cp -Rf "$create_config_template/." "/config/$create_config_name/" 2>/dev/null; then
+                __log_warn "Failed to copy config directory: $create_config_name"
+                errors=$((errors + 1))
+              fi
+            fi
+          elif [ -f "$create_config_template" ]; then
+            if [ ! -e "/config/$create_config_name" ]; then
+              if ! cp -Rf "$create_config_template" "/config/$create_config_name" 2>/dev/null; then
+                __log_warn "Failed to copy config file: $create_config_name"
+                errors=$((errors + 1))
+              fi
+            fi
           fi
         fi
       done
       unset create_config_template create_config_name
+      __log_debug "Config initialization completed with $errors errors"
     fi
   fi
+  return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_data_dir() {
   if [ -d "/data" ]; then
     if [ "$DATA_DIR_INITIALIZED" = "false" ] && [ -n "$DEFAULT_DATA_DIR" ]; then
-      echo "Copying data files $DEFAULT_DATA_DIR > /data"
+      __log_info "Copying data files $DEFAULT_DATA_DIR > /data"
       for create_data_template in "$DEFAULT_DATA_DIR"/*; do
-        create_data_name="$(basename "$create_data_template")"
+        create_data_name="${create_data_template##*/}"
         if [ -n "$create_data_template" ]; then
           if [ -d "$create_data_template" ]; then
             mkdir -p "/data/$create_data_name"
@@ -1480,7 +1546,7 @@ __is_htdocs_mounted() {
   WWW_ROOT_DIR="${WWW_ROOT_DIR:-/data/htdocs}"
   [ -n "$ENV_WWW_ROOT_DIR" ] && WWW_ROOT_DIR="$ENV_WWW_ROOT_DIR"
   if [ -n "$IMPORT_FROM_GIT" ]; then
-    if ! echo "$IMPORT_FROM_GIT" | grep -qE 'https://|http://|git://|ssh://'; then
+    if [[ ! "$IMPORT_FROM_GIT" =~ (https://|http://|git://|ssh://) ]]; then
       unset IMPORT_FROM_GIT
     fi
   fi
@@ -1540,7 +1606,7 @@ __start_php_dev_server() {
       find "/usr/local/share/httpd" -type f -not -path '.git*' -iname '*.php' -exec sed -i 's|[<].*SERVER_ADDR.*[>]|'${CONTAINER_IP4_ADDRESS:-127.0.0.1}'|g' {} \; 2>/dev/null
       php -S 0.0.0.0:$PHP_DEV_SERVER_PORT -t "/usr/local/share/httpd"
     fi
-    if ! echo "$1" | grep -q "^/usr/local/share/httpd"; then
+    if [[ "$1" != "/usr/local/share/httpd"* ]]; then
       find "$1" -type f -not -path '.git*' -iname '*.php' -exec sed -i 's|[<].*SERVER_ADDR.*[>]|'${CONTAINER_IP4_ADDRESS:-127.0.0.1}'|g' {} \; 2>/dev/null
       php -S 0.0.0.0:$PHP_DEV_SERVER_PORT -t "$1"
     fi
@@ -1602,7 +1668,7 @@ __backup() {
   fi
   local exitCodeP=0
   local exitStatus=0
-  local pidFile="/run/backup.pid"
+  local pidFile="/run/.backup.pid"
   local logDir="/data/log/backups"
   maxDays="${BACKUP_MAX_DAYS:-$maxDays}"
   cronTime="${BACKUP_RUN_CRON:-$cronTime}"
@@ -1682,7 +1748,7 @@ export LIGHTTPD_CONFIG_FILE="${LIGHTTPD_CONFIG_FILE:-$(__find_lighttpd_conf)}"
 export MARIADB_CONFIG_FILE="${MARIADB_CONFIG_FILE:-$(__find_mysql_conf)}"
 export POSTGRES_CONFIG_FILE="${POSTGRES_CONFIG_FILE:-$(__find_pgsql_conf)}"
 export MONGODB_CONFIG_FILE="${MONGODB_CONFIG_FILE:-$(__find_mongodb_conf)}"
-export ENTRYPOINT_PID_FILE="${ENTRYPOINT_PID_FILE:-/run/init.d/entrypoint.pid}"
+export ENTRYPOINT_PID_FILE="${ENTRYPOINT_PID_FILE:-/run/.entrypoint.pid}"
 export ENTRYPOINT_INIT_FILE="${ENTRYPOINT_INIT_FILE:-/config/.entrypoint.done}"
 export ENTRYPOINT_DATA_INIT_FILE="${ENTRYPOINT_DATA_INIT_FILE:-/data/.docker_has_run}"
 export ENTRYPOINT_CONFIG_INIT_FILE="${ENTRYPOINT_CONFIG_INIT_FILE:-/config/.docker_has_run}"
