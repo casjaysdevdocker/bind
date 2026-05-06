@@ -280,7 +280,16 @@ __no_exit() {
   local failed_services=""
   local failure_count=0
 
-  [ -f "/run/.no_exit.pid" ] && return 0
+  # only return early if the recorded PID is still alive; a leftover
+  # pid file from a prior container life (docker restart) would otherwise
+  # cause us to exit instead of entering the monitor loop.
+  if [ -f "/run/.no_exit.pid" ]; then
+    no_exit_pid="$(cat /run/.no_exit.pid 2>/dev/null)"
+    if [ -n "$no_exit_pid" ] && kill -0 "$no_exit_pid" 2>/dev/null; then
+      return 0
+    fi
+    rm -f /run/.no_exit.pid 2>/dev/null || true
+  fi
 
   exec bash -c "
     trap 'echo \"Container shutdown requested\"; rm -f /run/.no_exit.pid /run/*.pid; exit 0' TERM INT
