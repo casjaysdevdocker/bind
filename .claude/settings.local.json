@@ -23,7 +23,8 @@
       "Bash(dig @127.0.0.1 -p 15300 duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion +short +time=5 +tries=1)",
       "Read(//etc/docker/**)",
       "Bash(python3 -c 'import json; json.load\\(open\\(\"/etc/docker/daemon.json\"\\)\\); print\\(\"OK\"\\)')",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Read(//root/.local/log/buildx/docker.io/casjaysdevdocker/bind/**)"
     ]
   }
 }
