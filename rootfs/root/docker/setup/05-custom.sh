@@ -31,6 +31,19 @@ exitCode=0
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
+# wipe-and-replace per template §4: ensure /etc/bind contains ONLY our
+# optimized config. 02-packages.sh + 03-files.sh already do this; the
+# block below makes the intent explicit and survives reorderings.
+if [ -d "/tmp/etc/bind" ]; then
+  rm -Rf "/etc/bind"/*
+  cp -Rf "/tmp/etc/bind/." "/etc/bind/"
+fi
+# Runtime dirs that named needs to exist on first boot (the init.d
+# script will recreate these too, but pre-creating avoids a chown -R
+# failure on a missing dir during __run_pre_execute_checks).
+mkdir -p /run/bind /data/logs/bind /var/bind/primary /var/bind/secondary \
+         /var/bind/stats /var/bind/dynamic /var/bind/zones
+chown -Rf named:named /etc/bind /var/bind 2>/dev/null || true
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the exit code

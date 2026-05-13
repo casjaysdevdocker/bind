@@ -33,7 +33,7 @@ exitCode=0
 # Predefined actions
 if [ -d "/tmp" ]; then rm -Rf "/tmp"/*; fi
 if [ -d "$HOME/.cache" ]; then rm -Rf "$HOME/.cache"; fi
-if [ -d "/var/bind" ]; then rm -Rf "/var/bind"/*; fi
+# DO NOT wipe /var/bind here - it holds root.cache which named needs at boot.
 if [ -d "/var/named" ]; then rm -Rf "/var/named"/*; fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script

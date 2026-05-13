@@ -31,14 +31,9 @@ exitCode=0
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main script
-# wipe package-installed configs so the rootfs ones in /tmp/etc/* are
-# the only files that end up under /etc/<service>/ after 03-files.sh runs.
-rm -Rf /etc/tor/*
-rm -Rf /etc/nginx/*
-rm -Rf /etc/php*/*
-rm -Rf /etc/bind.* /etc/named.*
+# wipe package-installed bind defaults so the rootfs ones in /tmp/etc/bind/
+# are the only files that end up under /etc/bind/ after 03-files.sh runs.
 rm -Rf "/etc/bind"/* "/var/bind"/*
-rm -Rf "/etc/named"/* "/var/named"/*
 mkdir -p "/etc/bind/keys" "/var/bind/zones" "/var/bind/primary" "/var/bind/secondary" "/var/bind/stats" "/var/bind/dynamic"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set the exit code
