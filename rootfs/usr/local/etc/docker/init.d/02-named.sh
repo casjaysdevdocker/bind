@@ -176,7 +176,7 @@ EXEC_CMD_ARGS='-f -u $SERVICE_USER -c $ETC_DIR/named.conf'
 # execute script before
 EXEC_PRE_SCRIPT=''
 # Set to 'no' for configuration services (no daemon process), leave blank for actual services
-SERVICE_USES_PID=''
+SERVICE_USES_PID='yes'
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is this service a web server
 IS_WEB_SERVER="no"
