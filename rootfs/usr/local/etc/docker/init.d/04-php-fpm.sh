@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602061352-git
+##@Version           :  202605131434-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -98,9 +98,9 @@ if [ ! -f "/run/.start_init_scripts.pid" ]; then
 fi
 # Clean up any stale PID file for this service on startup
 if [ -n "$SERVICE_NAME" ] && [ -f "/run/init.d/$SERVICE_NAME.pid" ]; then
-  old_pid=$(cat "/run/init.d/$SERVICE_NAME.pid" 2>/dev/null)
+  old_pid=$(<"/run/init.d/$SERVICE_NAME.pid") 2>/dev/null
   if [ -n "$old_pid" ] && ! kill -0 "$old_pid" 2>/dev/null; then
-    echo "🧹 Removing stale PID file for $SERVICE_NAME"
+    echo "Removing stale PID file for $SERVICE_NAME"
     rm -f "/run/init.d/$SERVICE_NAME.pid"
   fi
 fi
@@ -389,7 +389,7 @@ __post_execute() {
     __banner "$postMessageEnd: Status $retVal"
   ) 2>"/dev/stderr" | tee -p -a "/data/logs/init.txt" &
   pid=$!
-  if ps ax | awk '{print $1}' | grep -v grep | grep -q "$execPid$"; then
+  if kill -0 "$pid" 2>/dev/null; then
     retVal=0
   else
     retVal=10
@@ -533,11 +533,9 @@ __run_start_script() {
         fi
         if [ -n "$SERVICE_PORT" ]; then
           __log_info "$name will be running on port $SERVICE_PORT"
-        else
-          SERVICE_PORT="9000"
         fi
       fi
-      if [ -n "$pre" ] && [ -n "$(command -v "$pre" 2>/dev/null)" ]; then
+      if [ -n "$pre" ] && command -v "$pre" &>/dev/null; then
         export cmd_exec="$pre $cmd $args"
         message="Starting service: $name $args through $pre"
       else
@@ -569,9 +567,14 @@ execute_command="$execute_command"
 \$execute_command 2>"/dev/stderr" >>"\$LOG_DIR/\$SERVICE_NAME.log" &
 execPid=\$!
 sleep 1
-checkPID="\$(ps ax | awk '{print \$1}' | grep -v grep | grep "\$execPid$" || false)"
-[ -n "\$execPid"  ] && [ -n "\$checkPID" ] && echo "\$execPid" >"\$SERVICE_PID_FILE" && retVal=0 || retVal=10
-[ "\$retVal" = 0 ] && printf '%s\n' "\$SERVICE_NAME: \$execPid" >"/run/healthcheck/\$SERVICE_NAME" || echo "Failed to start $execute_command" >&2
+if [ -n "\$execPid" ] && kill -0 "\$execPid" 2>/dev/null; then
+  echo "\$execPid" >"\$SERVICE_PID_FILE"
+  retVal=0
+  printf '%s\n' "\$SERVICE_NAME: \$execPid" >"/run/healthcheck/\$SERVICE_NAME"
+else
+  retVal=10
+  echo "Failed to start $execute_command" >&2
+fi
 exit \$retVal
 
 EOF
@@ -595,9 +598,14 @@ execute_command="$execute_command"
 \$execute_command 2>>"/dev/stderr" >>"\$LOG_DIR/\$SERVICE_NAME.log" &
 execPid=\$!
 sleep 1
-checkPID="\$(ps ax | awk '{print \$1}' | grep -v grep | grep "\$execPid$" || false)"
-[ -n "\$execPid"  ] && [ -n "\$checkPID" ] && echo "\$execPid" >"\$SERVICE_PID_FILE" && retVal=0 || retVal=10
-[ "\$retVal" = 0 ] || echo "Failed to start $execute_command" >&2
+if [ -n "\$execPid" ] && kill -0 "\$execPid" 2>/dev/null; then
+  echo "\$execPid" >"\$SERVICE_PID_FILE"
+  retVal=0
+  printf '%s\n' "\$SERVICE_NAME: \$execPid" >"/run/healthcheck/\$SERVICE_NAME"
+else
+  retVal=10
+  echo "Failed to start $execute_command" >&2
+fi
 exit \$retVal
 
 EOF

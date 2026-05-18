@@ -1,7 +1,7 @@
 # Docker image for bind using the alpine template
 ARG IMAGE_NAME="bind"
 ARG PHP_SERVER="bind"
-ARG BUILD_DATE="202605101200"
+ARG BUILD_DATE="202605131434"
 ARG LANGUAGE="en_US.UTF-8"
 ARG TIMEZONE="America/New_York"
 ARG WWW_ROOT_DIR="/usr/local/share/httpd/default"
@@ -54,7 +54,7 @@ ARG PHP_SERVER
 ARG SHELL_OPTS
 ARG PATH
 
-ARG PACK_LIST="bind bind-tools bind-dnssec-root bind-plugins bash "
+ARG PACK_LIST="bind bind-tools bind-dnssec-root bind-plugins nginx php83 php83-fpm php83-opcache tor bash tini "
 
 ENV ENV=~/.profile
 ENV SHELL="/bin/sh"
@@ -76,13 +76,7 @@ RUN set -e; \
 
 RUN set -e; \
   echo "Setting up prerequisites"; \
-  apk --no-cache add bash; \
-  SH_CMD="$(which sh 2>/dev/null||command -v sh 2>/dev/null)"; \
-  BASH_CMD="$(which bash 2>/dev/null||command -v bash 2>/dev/null)"; \
-  [ -x "$BASH_CMD" ] && symlink "$BASH_CMD" "/bin/sh" || true; \
-  [ -x "$BASH_CMD" ] && symlink "$BASH_CMD" "/usr/bin/sh" || true; \
-  [ -x "$BASH_CMD" ] && [ "$SH_CMD" != "/bin/sh" ] && symlink "$BASH_CMD" "$SH_CMD" || true; \
-  [ -n "$BASH_CMD" ] && sed -i 's|root:x:.*|root:x:0:0:root:/root:'$BASH_CMD'|g' "/etc/passwd" || true
+  true
 
 ENV SHELL="/bin/bash"
 SHELL [ "/bin/bash", "-c" ]
@@ -97,12 +91,7 @@ RUN echo "Initializing the system"; \
 
 RUN echo "Creating and editing system files "; \
   $SHELL_OPTS; \
-  rm -Rf "/etc/apk/repositories"; \
-  [ "$DISTRO_VERSION" = "latest" ] && DISTRO_VERSION="edge";[ "$DISTRO_VERSION" = "edge" ] || DISTRO_VERSION="v${DISTRO_VERSION}"; \
-  echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/main" >>"/etc/apk/repositories"; \
-  echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/community" >>"/etc/apk/repositories"; \
-  if [ "${DISTRO_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${DISTRO_VERSION}/testing" >>"/etc/apk/repositories";fi; \
-  apk update; apk upgrade --no-cache; \
+  [ -f "/root/.profile" ] || touch "/root/.profile"; \
   if [ -f "/root/docker/setup/01-system.sh" ];then echo "Running the system script";/root/docker/setup/01-system.sh||{ echo "Failed to execute /root/docker/setup/01-system.sh" >&2 && exit 10; };echo "Done running the system script";fi; \
   echo ""
 
@@ -147,6 +136,7 @@ RUN echo "Updating system files "; \
 RUN echo "Custom Settings"; \
   $SHELL_OPTS; \
   echo ""
+
 
 RUN echo "Setting up users and scripts "; \
   $SHELL_OPTS; \
