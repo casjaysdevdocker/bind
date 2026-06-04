@@ -438,7 +438,7 @@ EOF
   #
   if [ -d "$DATA_DIR/zones" ]; then
     for dns_file in "$DATA_DIR/zones"/*; do
-      file_name="$(basename "$dns_file")"
+      file_name="${dns_file##*/}"
       domain_name="$(grep -Rs '\$ORIGIN' "$dns_file" | awk '{print $NF}' | sed 's|.$||g')"
       if [ -f "$dns_file" ]; then
         if [ -n "$domain_name" ] && ! grep -qs "$domain_name" "$NAMED_CONFIG_FILE"; then
@@ -494,8 +494,8 @@ EOF
   if [ -d "$DATA_DIR/remote" ]; then
     for dns_file in "$DATA_DIR/remote"/*; do
       if [ -s "$dns_file" ]; then
-        file_name="$(basename "$dns_file")"
-        domain_name="$(basename "${dns_file%.*}")"
+        file_name="${dns_file##*/}"
+        domain_name="${dns_file%.*}"
         if [ -n "$domain_name" ]; then
           sed 's|REPLACE_VAR_DIR|'"$VAR_DIR"'|g' "$dns_file" >>"$DNS_ZONE_FILE"
           grep -qs "$domain_name" "$DNS_ZONE_FILE" && echo "Secondary $domain_name to $DNS_ZONE_FILE"
