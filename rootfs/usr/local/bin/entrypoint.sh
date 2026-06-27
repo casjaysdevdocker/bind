@@ -630,20 +630,6 @@ ssl)
   exit $?
   ;;
 # manage ssl certificate
-certbot)
-  shift 1
-  CERT_BOT_ENABLED="yes"
-  if [ "$1" = "create" ]; then
-    shift 1
-    __certbot "create"
-  elif [ "$1" = "renew" ]; then
-    shift 1
-    __certbot "renew certonly --force-renew"
-  else
-    __exec_command "certbot" "$@"
-  fi
-  exit $?
-  ;;
 # Launch shell
 */bin/sh | */bin/bash | bash | sh | shell)
   shift 1
