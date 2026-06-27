@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605131434-git
+##@Version           :  202606261600-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -452,23 +452,28 @@ __create_service_env() {
 EOF
   fi
   if [ ! -f "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.local.sh" ]; then
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __run_precopy_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __execute_prerun_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __run_pre_execute_checks_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __update_conf_files_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __pre_execute_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __post_execute_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __pre_message_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    __update_ssl_conf_local() { true; }
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
+  	cat <<'EOF' >"/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.local.sh"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Local overrides - sourced after the main env file.
+# Redefine any of these functions to customise behaviour.
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__run_precopy_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__execute_prerun_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__run_pre_execute_checks_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__update_conf_files_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__pre_execute_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__post_execute_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__pre_message_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__update_ssl_conf_local() { true; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+EOF
   fi
   if ! __file_exists_with_content "/config/env/${SERVICE_NAME:-$SCRIPT_NAME}.sh"; then
     exitCode=$((exitCode + 1))
