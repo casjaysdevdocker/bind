@@ -406,21 +406,6 @@ if [ "$ENTRYPOINT_FIRST_RUN" != "no" ] || [ "$CONFIG_DIR_INITIALIZED" = "no" ] |
   # Setup bin directory - /config/bin > /usr/local/bin
   __initialize_custom_bin_dir
   # - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Copy default system configs - /usr/local/share/template-files/defaults > /config/
-  if [ "$CONFIG_DIR_INITIALIZED" = "no" ]; then
-    __initialize_default_templates
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Copy custom config files - /usr/local/share/template-files/config > /config/
-  if [ "$CONFIG_DIR_INITIALIZED" = "no" ]; then
-    __initialize_config_dir
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Copy custom data files - /usr/local/share/template-files/data > /data/
-  if [ "$DATA_DIR_INITIALIZED" = "no" ]; then
-    __initialize_data_dir
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - -
   # Initialize SSL certificates
   __initialize_ssl_certs
   # - - - - - - - - - - - - - - - - - - - - - - - - -
