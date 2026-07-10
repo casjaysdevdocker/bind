@@ -19,8 +19,8 @@ dockermgr update bind
 ## Install and run container
   
 ```shell
-dockerHome="/var/lib/srv/$USER/docker/casjaysdevdocker/bind/bind/latest/rootfs"
-mkdir -p "/var/lib/srv/$USER/docker/bind/rootfs"
+dockerHome="/srv/$USER/docker/casjaysdevdocker/bind/bind/latest/rootfs"
+mkdir -p "/srv/$USER/docker/bind/rootfs"
 git clone "https://github.com/dockermgr/bind" "$HOME/.local/share/CasjaysDev/dockermgr/bind"
 cp -Rfva "$HOME/.local/share/CasjaysDev/dockermgr/bind/rootfs/." "$dockerHome/"
 docker run -d \
@@ -47,8 +47,8 @@ services:
       - TZ=America/New_York
       - HOSTNAME=bind
     volumes:
-      - "/var/lib/srv/$USER/docker/casjaysdevdocker/bind/bind/latest/rootfs/data:/data:z"
-      - "/var/lib/srv/$USER/docker/casjaysdevdocker/bind/bind/latest/rootfs/config:/config:z"
+      - "/srv/$USER/docker/casjaysdevdocker/bind/bind/latest/rootfs/data:/data:z"
+      - "/srv/$USER/docker/casjaysdevdocker/bind/bind/latest/rootfs/config:/config:z"
     ports:
       - 80:80
     restart: always
